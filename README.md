@@ -39,7 +39,7 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 `Value#backward(seed = 1.0)` traverses the computation graph in reverse topological order and sums gradient contributions at shared nodes. Each call clears intermediate gradients and accumulates leaf gradients. Call `optimizer.zero_grad` before each training step, and build a fresh forward graph after updating parameters.
 
-`Tensor` stores `Value` elements in contiguous row-major order with shape and stride metadata. Elementwise `+`, `-`, `*`, and `/` broadcast across trailing axes. `matmul` accepts rank-2 matrices. `sum` and `mean` reduce all elements to a `Value`. `Linear` expects input shaped `[batch, features]`, and MSE requires identical prediction and target shapes. The current API supports nonempty dimensions and whole-tensor reductions.
+`Tensor` uses contiguous row-major storage with shape and stride metadata. Indexing and `values` expose scalar `Value` objects. Elementwise `+`, `-`, `*`, and `/` broadcast across trailing axes. `matmul` accepts rank-2 matrices. `sum` and `mean` reduce all elements to a `Value`. `Linear` expects input shaped `[batch, features]`, and MSE requires identical prediction and target shapes. The current API supports nonempty dimensions and whole-tensor reductions.
 
 ## Train an XOR model
 
@@ -75,4 +75,4 @@ Use `NN::CrossEntropyLoss` with raw logits shaped `[batch, classes]` and integer
 
 ## Backend roadmap
 
-The scalar graph makes the current engine easy to check, but uses substantial time and memory for large models. A future backend interface could separate storage and kernels from shape and stride metadata. Tensor-level vector–Jacobian products could then support Rust/C++ CPU or GPU backends.
+Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.

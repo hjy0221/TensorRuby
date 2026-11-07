@@ -58,13 +58,12 @@ module TensorRuby
           raise ArgumentError, 'targets must be valid integer class indices'
         end
 
-        values = logits.values
-        rows = values.each_slice(classes)
+        rows = logits.to_a
         loss = 0.0
         gradients = []
         rows.zip(labels).each do |row, label|
           index = label.to_i
-          scores = row.map(&:data)
+          scores = row
           raise ArgumentError, 'logits must be finite' unless scores.all?(&:finite?)
 
           maximum = scores.max
@@ -77,9 +76,7 @@ module TensorRuby
           end
         end
 
-        Value.new(loss, parents: values) do |upstream|
-          values.each_with_index { |value, i| value.grad += upstream * gradients[i] }
-        end
+        logits.reduce_with_gradient(loss, gradients)
       end
     end
 

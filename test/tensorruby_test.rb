@@ -58,6 +58,37 @@ class TensorRubyTest < Minitest::Test
     assert_in_delta expected, parameter.data, 1e-8
   end
 
+  def test_tensor_pullbacks_match_finite_differences
+    x = Tensor.new([[1, -2], [3, 4]])
+    weight = Tensor.new([[2, -1], [1, 2]])
+    bias = Tensor.new([0.3, -0.7])
+    forward = -> { (x.matmul(weight) + bias).relu }
+    seed = Tensor.new([[0.5, 2], [-1, 3]])
+    forward.call.backward(seed)
+    epsilon = 1e-5
+
+    (x.values + weight.values + bias.values).each do |parameter|
+      original = parameter.data
+      parameter.data = original + epsilon
+      upper = (forward.call * seed).sum.data
+      parameter.data = original - epsilon
+      lower = (forward.call * seed).sum.data
+      parameter.data = original
+      assert_in_delta((upper - lower) / (2 * epsilon), parameter.grad, 1e-8)
+    end
+  end
+
+  def test_tensor_backward_accumulates_shared_and_scalar_paths
+    x = Tensor.new([2, 3])
+    intermediate = x * x
+    loss = (intermediate + intermediate).sum + intermediate[0]
+    2.times { loss.backward }
+    assert_equal [24.0, 24.0], x.values.map(&:grad)
+    assert_equal [3.0, 2.0], intermediate.values.map(&:grad)
+    assert_raises(ArgumentError) { intermediate.backward }
+    assert_raises(ArgumentError) { intermediate.backward([[1, 1]]) }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
