@@ -1,6 +1,6 @@
 # rubygrad
 
-[English](README.en.md) · [日本語](README.ja.md) · [한국어](README.md)
+[English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
 rubygrad は Pure Ruby で実装した小さな深層学習フレームワークです。Ruby 2.7 以上が必要で、実行時の外部依存関係はありません。
 
