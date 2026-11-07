@@ -84,6 +84,17 @@ model.eval
 predictions = TensorRuby.no_grad { model.call(x).to_a }
 ```
 
+## GPT と拡散モデルのサンプル
+
+GPT-2 形式のデコーダーは整数トークン ID を受け取り、次トークン予測を学習します。トークンと位置の埋め込み、因果マルチヘッド注意、事前レイヤー正規化、GELU、埋め込みと出力の重み共有を備えます。拡散モデルは合成点群と白黒の縞模様を学習し、画像版は生成した 6×6 の画像 8 枚を PNG に保存します。
+
+```sh
+ruby examples/gpt.rb
+ruby examples/transformer.rb
+ruby examples/diffusion.rb
+ruby examples/image_diffusion.rb diffusion-samples.png
+```
+
 ## 今後の拡張
 
 テンソル演算ごとにグラフのノードを一つ作り、ベクトル・ヤコビアン積を計算します。`output.backward(seed)` には出力と同じ形状の勾配を渡します。出力が 1 要素なら省略できます。CPU カーネルは現在 Ruby で動作し、将来はネイティブ実装に置き換えられます。

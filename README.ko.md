@@ -84,6 +84,17 @@ model.eval
 predictions = TensorRuby.no_grad { model.call(x).to_a }
 ```
 
+## GPT와 확산 모델 예제
+
+GPT-2 형태의 디코더는 정수 토큰 ID를 받아 다음 토큰을 예측하도록 학습합니다. 학습 가능한 토큰·위치 임베딩, causal 멀티헤드 어텐션, 사전 레이어 정규화, GELU, 임베딩과 출력 가중치 공유를 지원합니다. 확산 예제는 합성 점과 흑백 줄무늬를 학습하며, 이미지 예제는 생성한 6×6 이미지 8장을 PNG로 저장합니다.
+
+```sh
+ruby examples/gpt.rb
+ruby examples/transformer.rb
+ruby examples/diffusion.rb
+ruby examples/image_diffusion.rb diffusion-samples.png
+```
+
 ## 확장 방향
 
 텐서 연산 하나마다 그래프 노드 하나를 기록하고 벡터–야코비안 곱으로 역전파합니다. `output.backward(seed)`의 시드는 출력과 형태가 같아야 하며, 원소가 하나면 생략할 수 있습니다. 현재 CPU 커널은 Ruby로 실행되며, 향후 네이티브 구현으로 교체할 수 있습니다.

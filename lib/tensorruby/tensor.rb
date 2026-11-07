@@ -129,6 +129,138 @@ module TensorRuby
       self
     end
 
+    def gather_rows(indices)
+      unless rank == 2 && indices.is_a?(Array) && !indices.empty? &&
+             indices.all? { |i| i.is_a?(Integer) && i >= 0 && i < shape[0] }
+        raise ArgumentError, 'expected valid row indices for a rank-2 tensor'
+      end
+
+      columns = shape[1]
+      data = flat_data
+      offsets = indices.map { |i| i * columns }
+      output = offsets.flat_map { |offset| data.slice(offset, columns) }
+      operation([offsets.size, columns], output, [@node]) do |gradient, pass|
+        gradient.each_with_index do |value, index|
+          row, column = index.divmod(columns)
+          @node.accumulate(pass, offsets[row] + column, value)
+        end
+      end
+    end
+
+    def self.concat_columns(tensors)
+      raise ArgumentError, 'at least one tensor is required' if tensors.empty?
+
+      tensors.drop(1).reduce(tensors.first) { |left, right| left.concat_columns(right) }
+    end
+
+    def concat_columns(other)
+      unless rank == 2 && other.rank == 2 && shape[0] == other.shape[0]
+        raise ArgumentError, 'expected rank-2 tensors with equal row counts'
+      end
+
+      rows, left_width = shape
+      right_width = other.shape[1]
+      left, right = flat_data, other.flat_data
+      right_node = other.graph_node
+      output = Array.new(rows) do |row|
+        left.slice(row * left_width, left_width) + right.slice(row * right_width, right_width)
+      end.flatten
+      width = left_width + right_width
+      operation([rows, width], output, [@node, right_node]) do |gradient, pass|
+        gradient.each_with_index do |value, index|
+          row, column = index.divmod(width)
+          if column < left_width
+            @node.accumulate(pass, row * left_width + column, value)
+          else
+            right_node.accumulate(pass, row * right_width + column - left_width, value)
+          end
+        end
+      end
+    end
+
+    def gelu
+      coefficient = Math.sqrt(2.0 / Math::PI)
+      data = flat_data
+      tanh = data.map { |x| Math.tanh(coefficient * (x + 0.044715 * x**3)) }
+      output = data.each_with_index.map { |x, i| 0.5 * x * (1 + tanh[i]) }
+      operation(shape, output, [@node]) do |gradient, pass|
+        data.each_with_index do |x, i|
+          slope = coefficient * (1 + 3 * 0.044715 * x**2)
+          derivative = 0.5 * (1 + tanh[i] + x * (1 - tanh[i]**2) * slope)
+          @node.accumulate(pass, i, derivative * gradient[i])
+        end
+      end
+    end
+
+    def transpose
+      raise ArgumentError, 'transpose requires a rank-2 tensor' unless rank == 2
+
+      rows, columns = shape
+      data = flat_data
+      indices = Array.new(size) do |index|
+        column, row = index.divmod(rows)
+        row * columns + column
+      end
+      operation([columns, rows], indices.map { |index| data[index] }, [@node]) do |gradient, pass|
+        indices.each_with_index { |source, i| @node.accumulate(pass, source, gradient[i]) }
+      end
+    end
+
+    # Normalize each row. Causal mode masks columns beyond the row index.
+    def softmax(causal: false)
+      raise ArgumentError, 'softmax requires a rank-2 tensor' unless rank == 2
+
+      columns = shape[1]
+      probabilities = flat_data.each_slice(columns).with_index.flat_map do |row, index|
+        visible = causal ? [index + 1, columns].min : columns
+        scores = row.first(visible)
+        maximum = scores.max
+        weights = scores.map { |score| Math.exp(score - maximum) }
+        total = weights.sum
+        weights.map { |weight| weight / total } + Array.new(columns - visible, 0.0)
+      end
+      operation(shape, probabilities, [@node]) do |gradient, pass|
+        gradient.each_slice(columns).with_index do |row, row_index|
+          offset = row_index * columns
+          dot = row.each_with_index.sum { |value, col| value * probabilities[offset + col] }
+          row.each_with_index do |value, col|
+            index = offset + col
+            @node.accumulate(pass, index, probabilities[index] * (value - dot))
+          end
+        end
+      end
+    end
+
+    def normalize_rows(eps: 1e-5)
+      raise ArgumentError, 'normalization requires a rank-2 tensor' unless rank == 2
+      unless eps.is_a?(Numeric) && eps.real? && eps.finite? && eps.positive?
+        raise ArgumentError, 'eps must be positive and finite'
+      end
+
+      columns = shape[1]
+      inverse_stddev = []
+      normalized = flat_data.each_slice(columns).flat_map do |row|
+        mean = row.sum / columns
+        centered = row.map { |value| value - mean }
+        variance = centered.sum { |value| value * value } / columns
+        inverse = 1.0 / Math.sqrt(variance + eps)
+        inverse_stddev << inverse
+        centered.map { |value| value * inverse }
+      end
+      operation(shape, normalized, [@node]) do |gradient, pass|
+        gradient.each_slice(columns).with_index do |row, row_index|
+          offset = row_index * columns
+          mean = row.sum / columns
+          dot_mean = row.each_with_index.sum { |value, col| value * normalized[offset + col] } / columns
+          row.each_with_index do |value, col|
+            index = offset + col
+            derivative = inverse_stddev[row_index] * (value - mean - normalized[index] * dot_mean)
+            @node.accumulate(pass, index, derivative)
+          end
+        end
+      end
+    end
+
     def matmul(other)
       other = Tensor.wrap(other)
       raise ArgumentError, 'matmul requires rank-2 tensors' unless rank == 2 && other.rank == 2

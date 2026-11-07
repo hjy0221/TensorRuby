@@ -84,6 +84,17 @@ model.eval
 predictions = TensorRuby.no_grad { model.call(x).to_a }
 ```
 
+## GPT and diffusion examples
+
+The GPT-2-style decoder accepts integer token IDs and trains with next-token cross entropy. It includes learned token and position embeddings, causal multi-head attention, pre-layer normalization, GELU, and a tied output projection. The diffusion examples train small noise predictors on synthetic points and grayscale stripe patterns. The image example writes a PNG contact sheet of eight generated 6×6 samples.
+
+```sh
+ruby examples/gpt.rb
+ruby examples/transformer.rb
+ruby examples/diffusion.rb
+ruby examples/image_diffusion.rb diffusion-samples.png
+```
+
 ## Backend roadmap
 
 Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.

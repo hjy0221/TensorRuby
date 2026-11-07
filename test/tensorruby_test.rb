@@ -136,6 +136,54 @@ class TensorRubyTest < Minitest::Test
     assert_equal [4.0, 6.0], x.values.map(&:grad)
   end
 
+  def test_gpt_is_causal_and_embedding_gradients_accumulate
+    model = NN::GPT.new(vocab_size: 5, context_size: 3, features: 4, heads: 2,
+                        layers: 1, random: Random.new(9))
+    first = model.call([1, 2, 3])
+    second = model.call([1, 2, 4])
+    assert_equal [3, 5], first.shape
+    assert_equal first.to_a.first(2), second.to_a.first(2)
+    NN::CrossEntropyLoss.new.call(first, [2, 3, 4]).backward
+    assert model.parameters.any? { |value| value.grad.abs > 1e-6 }
+
+    embedding = Tensor.new([[1, 2], [3, 4]])
+    embedding.gather_rows([1, 0, 1]).sum.backward
+    assert_equal [1.0, 1.0, 2.0, 2.0], embedding.values.map(&:grad)
+  end
+
+  def test_layer_normalization_and_gelu_match_finite_differences
+    x = Tensor.new([[-2, 1, 4]])
+    weights = Tensor.new([[2, -1, 0.5]])
+    evaluate = -> { (x.normalize_rows.gelu * weights).sum }
+    evaluate.call.backward
+    x.values.each do |parameter|
+      value = parameter.data
+      parameter.data = value + 1e-5
+      upper = evaluate.call.data
+      parameter.data = value - 1e-5
+      lower = evaluate.call.data
+      parameter.data = value
+      assert_in_delta((upper - lower) / 2e-5, parameter.grad, 1e-8)
+    end
+  end
+
+  def test_diffusion_schedule_noises_and_samples
+    schedule = Diffusion::Schedule.new(steps: 3, beta_start: 0.1, beta_end: 0.2)
+    x = schedule.add_noise([[1]], [[2]], 0)
+    assert_in_delta Math.sqrt(0.9) + 2 * Math.sqrt(0.1), x.to_a[0][0], 1e-12
+    assert_raises(ArgumentError) { schedule.add_noise([[1]], [2], 0) }
+
+    visited = []
+    output = schedule.sample([1, 2], random: Random.new(2)) do |_noisy, step|
+      visited << step
+      refute TensorRuby.grad_enabled?
+      [[0, 0]]
+    end
+    assert_equal [2, 1, 0], visited
+    assert_equal [1, 2], output.shape
+    assert output.to_a.flatten.all?(&:finite?)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
