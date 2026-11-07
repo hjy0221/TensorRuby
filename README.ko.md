@@ -73,6 +73,8 @@ end
 
 `NN::CrossEntropyLoss`에는 `[batch, classes]` 형태의 로짓과 `[batch]` 형태의 정수 클래스 인덱스를 전달합니다. `Optim::Adam`은 학습 단계 사이에 모멘트를 유지합니다. `ruby examples/classification.rb`로 3개 클래스를 분류하는 예제를 실행할 수 있습니다.
 
+`Data::DataLoader.new(samples, batch_size: 8)`은 `[입력, 정답]` 쌍을 미니배치로 묶고 에포크마다 섞습니다. 분류 예제는 [DeZero](https://github.com/WegraLee/deep-learning-from-scratch-3)의 데이터셋과 로더 분리 방식을 참고했습니다.
+
 ## 확장 방향
 
 텐서 연산 하나마다 그래프 노드 하나를 기록하고 벡터–야코비안 곱으로 역전파합니다. `output.backward(seed)`의 시드는 출력과 형태가 같아야 하며, 원소가 하나면 생략할 수 있습니다. 현재 CPU 커널은 Ruby로 실행되며, 향후 네이티브 구현으로 교체할 수 있습니다.

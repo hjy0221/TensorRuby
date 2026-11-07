@@ -22,10 +22,13 @@ optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.03)
 target = TensorRuby.tensor(labels)
 
 initial_loss = loss_fn.call(model.call(x), target).data
-100.times do
-  optimizer.zero_grad
-  loss_fn.call(model.call(x), target).backward
-  optimizer.step
+loader = TensorRuby::Data::DataLoader.new(x.to_a.zip(labels), batch_size: 8, random: random)
+40.times do
+  loader.each do |inputs, targets|
+    optimizer.zero_grad
+    loss_fn.call(model.call(inputs), targets).backward
+    optimizer.step
+  end
 end
 
 final_loss = loss_fn.call(model.call(x), target).data

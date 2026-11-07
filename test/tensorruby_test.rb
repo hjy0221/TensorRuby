@@ -89,6 +89,19 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { intermediate.backward([[1, 1]]) }
   end
 
+  def test_data_loader_yields_paired_batches_and_keeps_remainder
+    data = [[[1], 4], [[2], 5], [[3], 6]]
+    loader = Data::DataLoader.new(data, batch_size: 2, shuffle: false)
+    expected = [[[[1.0], [2.0]], [4.0, 5.0]], [[[3.0]], [6.0]]]
+
+    assert_equal 2, loader.each.size
+    2.times { assert_equal expected, loader.map { |x, y| [x.to_a, y.to_a] } }
+    shuffled = Data::DataLoader.new(data, batch_size: 2, random: Random.new(42))
+    assert_equal data, shuffled.flat_map { |x, y| x.to_a.zip(y.to_a) }.sort
+    assert_empty Data::DataLoader.new([], batch_size: 2).to_a
+    assert_raises(ArgumentError) { Data::DataLoader.new(data, batch_size: 0) }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

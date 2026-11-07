@@ -73,6 +73,8 @@ end
 
 `NN::CrossEntropyLoss` に形状が `[batch, classes]` のロジットと、形状が `[batch]` の整数クラス番号を渡します。`Optim::Adam` は学習ステップ間でモーメントを保持します。3 クラスの例は `ruby examples/classification.rb` で実行できます。
 
+`Data::DataLoader.new(samples, batch_size: 8)` は `[入力, 正解]` の組をミニバッチにまとめ、エポックごとにシャッフルします。分類サンプルのデータセットとローダーの分離は [DeZero](https://github.com/WegraLee/deep-learning-from-scratch-3) を参考にしています。
+
 ## 今後の拡張
 
 テンソル演算ごとにグラフのノードを一つ作り、ベクトル・ヤコビアン積を計算します。`output.backward(seed)` には出力と同じ形状の勾配を渡します。出力が 1 要素なら省略できます。CPU カーネルは現在 Ruby で動作し、将来はネイティブ実装に置き換えられます。

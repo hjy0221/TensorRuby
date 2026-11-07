@@ -73,6 +73,8 @@ end
 
 Use `NN::CrossEntropyLoss` with raw logits shaped `[batch, classes]` and integer class indices shaped `[batch]`. `Optim::Adam` keeps its running moments across training steps. Run the three-class example with `ruby examples/classification.rb`.
 
+`Data::DataLoader.new(samples, batch_size: 8)` groups `[input, target]` pairs into tensor mini-batches and shuffles them each epoch. The classification example follows the dataset and loader separation in [DeZero](https://github.com/WegraLee/deep-learning-from-scratch-3).
+
 ## Backend roadmap
 
 Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.
