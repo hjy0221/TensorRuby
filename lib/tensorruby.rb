@@ -1,5 +1,6 @@
 require_relative 'tensorruby/version'
 require_relative 'tensorruby/value'
+require_relative 'tensorruby/cpu'
 require_relative 'tensorruby/tensor'
 require_relative 'tensorruby/nn'
 require_relative 'tensorruby/transformer'

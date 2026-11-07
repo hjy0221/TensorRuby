@@ -264,6 +264,14 @@ class TensorRubyTest < Minitest::Test
     refute model.training?
   end
 
+  def test_matmul_accumulates_both_operand_paths
+    matrix = Tensor.new([[1, 2], [3, 4]])
+    output = matrix.matmul(matrix)
+    assert_equal [[7.0, 10.0], [15.0, 22.0]], output.to_a
+    output.sum.backward
+    assert_equal [7.0, 11.0, 9.0, 13.0], matrix.values.map(&:grad)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

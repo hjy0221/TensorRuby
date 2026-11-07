@@ -12,6 +12,15 @@ module TensorRuby
         (pass[self] ||= Array.new(@size, 0.0))[index] += gradient
       end
 
+      def accumulate_vector(pass, gradient)
+        existing = pass[self]
+        if existing
+          gradient.each_with_index { |value, i| existing[i] += value }
+        else
+          pass[self] = gradient
+        end
+      end
+
       def propagate(pass)
         gradient = pass.delete(self)
         @pullback.call(gradient, pass) if gradient && @pullback
@@ -270,20 +279,11 @@ module TensorRuby
       cols = other.shape[1]
       left, right = flat_data, other.flat_data
       right_node = other.graph_node
-      output = Array.new(rows * cols) do |index|
-        row, col = index.divmod(cols)
-        inner.times.sum { |k| left[row * inner + k] * right[k * cols + col] }
-      end
+      output = CPU.matmul(left, right, rows, inner, cols)
       operation([rows, cols], output, [@node, right_node]) do |gradient, pass|
-        gradient.each_with_index do |upstream, index|
-          row, col = index.divmod(cols)
-          inner.times do |k|
-            a = row * inner + k
-            b = k * cols + col
-            @node.accumulate(pass, a, upstream * right[b])
-            right_node.accumulate(pass, b, upstream * left[a])
-          end
-        end
+        grad_left, grad_right = CPU.matmul_backward(left, right, gradient, rows, inner, cols)
+        @node.accumulate_vector(pass, grad_left)
+        right_node.accumulate_vector(pass, grad_right)
       end
     end
 
