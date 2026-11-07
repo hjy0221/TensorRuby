@@ -198,6 +198,22 @@ class TensorRubyTest < Minitest::Test
     assert_in_delta(-0.4, logits[2, 4].grad, 1e-12)
   end
 
+  def test_byte_pair_tokenizer_round_trips_unseen_utf8
+    tokenizer = Text::BytePairTokenizer.train(['banana banana', 'banana'], max_merges: 8)
+    assert_operator tokenizer.encode('banana').size, :<, 6
+    text = "한글 日本語 English 🌱"
+    assert_equal text, tokenizer.decode(tokenizer.encode(text))
+    assert_equal tokenizer.encode(text), Text::BytePairTokenizer.new(tokenizer.merges).encode(text)
+    assert_raises(ArgumentError) { Text::BytePairTokenizer.new([[256, 0]]) }
+  end
+
+  def test_next_token_windows_do_not_cross_document_boundaries
+    tokenizer = Text::BytePairTokenizer.new
+    windows = Text::NextTokenWindows.new(%w[abcde xy], tokenizer: tokenizer, context_size: 2)
+    decoded = windows.map { |input, target| [tokenizer.decode(input), tokenizer.decode(target)] }
+    assert_equal [%w[ab bc], %w[cd de], %w[x y]], decoded
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

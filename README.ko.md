@@ -113,6 +113,15 @@ ruby examples/capital_chat.rb --save capital-chat-weights.json
 ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 ```
 
+## 원문으로 사전학습
+
+바이트 페어 토크나이저와 작은 GPT를 처음부터 학습합니다. 유효한 UTF-8 텍스트를 토큰화할 수 있습니다. 한 줄에 문서 하나를 담은 UTF-8 학습·검증 파일을 각각 전달하세요. 토큰 병합 규칙은 학습 텍스트에서만 배웁니다.
+
+```sh
+ruby examples/pretrain.rb
+ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
 ## 확장 방향
 
 텐서 연산 하나마다 그래프 노드 하나를 기록하고 벡터–야코비안 곱으로 역전파합니다. `output.backward(seed)`의 시드는 출력과 형태가 같아야 하며, 원소가 하나면 생략할 수 있습니다. 현재 CPU 커널은 Ruby로 실행되며, 향후 네이티브 구현으로 교체할 수 있습니다.

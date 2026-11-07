@@ -113,6 +113,15 @@ ruby examples/capital_chat.rb --save capital-chat-weights.json
 ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 ```
 
+## 生テキストで事前学習
+
+バイトペアトークナイザーと小さな GPT をゼロから学習します。UTF-8 の任意の文字列をトークン化できます。学習用と検証用に、1 行につき 1 文書の UTF-8 ファイルを指定します。結合規則は学習用テキストから学びます。
+
+```sh
+ruby examples/pretrain.rb
+ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
 ## 今後の拡張
 
 テンソル演算ごとにグラフのノードを一つ作り、ベクトル・ヤコビアン積を計算します。`output.backward(seed)` には出力と同じ形状の勾配を渡します。出力が 1 要素なら省略できます。CPU カーネルは現在 Ruby で動作し、将来はネイティブ実装に置き換えられます。

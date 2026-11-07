@@ -113,6 +113,15 @@ ruby examples/capital_chat.rb --save capital-chat-weights.json
 ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 ```
 
+## Pretrain on raw text
+
+Train a byte-pair tokenizer and a small GPT from scratch. The tokenizer can encode any valid UTF-8 text. Pass separate UTF-8 training and validation files with one document per line. The tokenizer learns merges from training text only.
+
+```sh
+ruby examples/pretrain.rb
+ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
 ## Backend roadmap
 
 Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.
