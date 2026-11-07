@@ -184,6 +184,20 @@ class TensorRubyTest < Minitest::Test
     assert output.to_a.flatten.all?(&:finite?)
   end
 
+  def test_chat_supervises_only_assistant_tokens_and_turn_end
+    vocab = Chat::Vocabulary.new(['안녕', '반가워요'])
+    input, targets = vocab.training_example([['안녕', '반가워요']])
+    assert_equal [0, 3, 1, 4], input
+    assert_equal [-1, -1, 4, 2], targets
+
+    logits = Tensor.new(Array.new(input.size) { Array.new(vocab.size, 0.0) })
+    loss = NN::CrossEntropyLoss.new(ignore_index: Chat::Vocabulary::IGNORE).call(logits, targets)
+    assert_in_delta Math.log(vocab.size), loss.data, 1e-12
+    loss.backward
+    assert logits.values.first(2 * vocab.size).all? { |value| value.grad.zero? }
+    assert_in_delta(-0.4, logits[2, 4].grad, 1e-12)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

@@ -109,6 +109,10 @@ module TensorRuby
 
     # Mean cross entropy for [batch, classes] logits and class indices.
     class CrossEntropyLoss < Module
+      def initialize(ignore_index: nil)
+        @ignore_index = ignore_index
+      end
+
       def call(logits, target)
         logits = Tensor.wrap(logits)
         target = Tensor.wrap(target)
@@ -118,14 +122,22 @@ module TensorRuby
         end
 
         labels = target.to_a
-        unless labels.all? { |label| label >= 0 && label < classes && label == label.to_i }
+        unless labels.all? { |label| label == @ignore_index || (label >= 0 && label < classes && label == label.to_i) }
           raise ArgumentError, 'targets must be valid integer class indices'
         end
+
+        active = labels.count { |label| label != @ignore_index }
+        raise ArgumentError, 'at least one target must be supervised' if active.zero?
 
         rows = logits.to_a
         loss = 0.0
         gradients = []
         rows.zip(labels).each do |row, label|
+          if label == @ignore_index
+            gradients.concat(Array.new(classes, 0.0))
+            next
+          end
+
           index = label.to_i
           scores = row
           raise ArgumentError, 'logits must be finite' unless scores.all?(&:finite?)
@@ -134,9 +146,9 @@ module TensorRuby
           shifted = scores.map { |score| score - maximum }
           exponentials = shifted.map { |score| Math.exp(score) }
           total = exponentials.sum
-          loss += (Math.log(total) - shifted[index]) / batch
+          loss += (Math.log(total) - shifted[index]) / active
           exponentials.each_with_index do |exp, column|
-            gradients << (exp / total - (column == index ? 1 : 0)) / batch
+            gradients << (exp / total - (column == index ? 1 : 0)) / active
           end
         end
 

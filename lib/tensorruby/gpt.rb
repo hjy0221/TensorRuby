@@ -26,7 +26,7 @@ module TensorRuby
       end
 
       # Greedy generation. Context is cropped to the most recent tokens.
-      def generate(ids, max_new_tokens:)
+      def generate(ids, max_new_tokens:, stop_token: nil)
         unless max_new_tokens.is_a?(Integer) && max_new_tokens >= 0
           raise ArgumentError, 'max_new_tokens must be a nonnegative integer'
         end
@@ -39,7 +39,9 @@ module TensorRuby
         TensorRuby.no_grad do
           max_new_tokens.times do
             scores = call(result.last(@context_size)).to_a.last
-            result << scores.each_index.max_by { |index| scores[index] }
+            token = scores.each_index.max_by { |index| scores[index] }
+            result << token
+            break if token == stop_token
           end
         end
         result

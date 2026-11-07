@@ -95,6 +95,24 @@ ruby examples/diffusion.rb
 ruby examples/image_diffusion.rb diffusion-samples.png
 ```
 
+## 対話とモンスターのスプライト
+
+付属の韓国語・日本語・英語の対話で小さな対話モデルを学習できます。`--data FILE` には `[ユーザー, アシスタント]` の組を含む対話の JSON 配列を指定できます。語彙は空白区切りの学習データに限定されます。スプライトは固定の輪郭と、拡散モデルで生成した色や目の変化を組み合わせます。
+
+```sh
+ruby examples/chat.rb --interactive
+ruby examples/monster_diffusion.rb all monster-sprites.png
+```
+
+## 多言語の首都モデルを学習して読み込む
+
+12 か国の首都を 3 言語で学習し、保存した重みを再学習せずに読み込めます。学習済みの質問と、同じ単語を並べ替えた質問の完全一致率を表示します。
+
+```sh
+ruby examples/capital_chat.rb --save capital-chat-weights.json
+ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
+```
+
 ## 今後の拡張
 
 テンソル演算ごとにグラフのノードを一つ作り、ベクトル・ヤコビアン積を計算します。`output.backward(seed)` には出力と同じ形状の勾配を渡します。出力が 1 要素なら省略できます。CPU カーネルは現在 Ruby で動作し、将来はネイティブ実装に置き換えられます。

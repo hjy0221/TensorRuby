@@ -95,6 +95,24 @@ ruby examples/diffusion.rb
 ruby examples/image_diffusion.rb diffusion-samples.png
 ```
 
+## 대화 모델과 몬스터 스프라이트
+
+기본 한국어·일본어·영어 대화로 작은 모델을 학습하거나 `--data FILE`에 `[사용자, 어시스턴트]` 쌍으로 이루어진 대화 배열을 JSON으로 전달할 수 있습니다. 공백으로 나눈 학습 어휘를 사용합니다. 스프라이트는 고정 실루엣에 확산 모델이 생성한 색과 눈 색 변형을 적용합니다.
+
+```sh
+ruby examples/chat.rb --interactive
+ruby examples/monster_diffusion.rb all monster-sprites.png
+```
+
+## 다국어 수도 모델 학습과 불러오기
+
+12개 나라의 수도를 세 언어로 처음부터 학습하고, 저장한 가중치를 재학습 없이 불러올 수 있습니다. 학습에 쓴 질문과 같은 단어를 재배열한 질문의 정답률을 각각 표시합니다.
+
+```sh
+ruby examples/capital_chat.rb --save capital-chat-weights.json
+ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
+```
+
 ## 확장 방향
 
 텐서 연산 하나마다 그래프 노드 하나를 기록하고 벡터–야코비안 곱으로 역전파합니다. `output.backward(seed)`의 시드는 출력과 형태가 같아야 하며, 원소가 하나면 생략할 수 있습니다. 현재 CPU 커널은 Ruby로 실행되며, 향후 네이티브 구현으로 교체할 수 있습니다.

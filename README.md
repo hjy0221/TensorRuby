@@ -95,6 +95,24 @@ ruby examples/diffusion.rb
 ruby examples/image_diffusion.rb diffusion-samples.png
 ```
 
+## Chat and monster sprites
+
+Train a small chat model on the bundled Korean, Japanese, and English dialogues, or pass a JSON array of dialogues containing `[user, assistant]` pairs via `--data FILE`. The demo uses a closed whitespace vocabulary. The sprite demo uses fixed silhouettes and diffusion-generated color and eye variations.
+
+```sh
+ruby examples/chat.rb --interactive
+ruby examples/monster_diffusion.rb all monster-sprites.png
+```
+
+## Train and reload a multilingual capital model
+
+Train from scratch on 12 country–capital facts in three languages, then reload the resulting weights without retraining. The evaluation reports exact match for trained questions and reordered questions using the same words.
+
+```sh
+ruby examples/capital_chat.rb --save capital-chat-weights.json
+ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
+```
+
 ## Backend roadmap
 
 Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.
