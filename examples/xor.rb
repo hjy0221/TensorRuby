@@ -1,10 +1,10 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
-require 'rubygrad'
+require 'tensorruby'
 
-nn = Rubygrad::NN
+nn = TensorRuby::NN
 random = Random.new(42)
-x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = Rubygrad.tensor([[0], [1], [1], [0]])
+x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = TensorRuby.tensor([[0], [1], [1], [0]])
 
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
@@ -12,7 +12,7 @@ model = nn::Sequential.new(
   nn::Linear.new(8, 1, random: random)
 )
 criterion = nn::MSELoss.new
-optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 
 500.times do
   optimizer.zero_grad

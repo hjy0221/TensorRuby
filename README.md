@@ -1,15 +1,15 @@
-# rubygrad
+# TensorRuby
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-rubygrad is a small deep learning framework written in pure Ruby. It requires Ruby 2.7 or later and has no runtime dependencies.
+TensorRuby is a small deep learning framework written in pure Ruby. It requires Ruby 2.7 or later and has no runtime dependencies.
 
 ## Getting started
 
 ```sh
-ruby -Ilib test/rubygrad_test.rb
+ruby -Ilib test/tensorruby_test.rb
 ruby examples/regression.rb
-gem build rubygrad.gemspec
+gem build tensorruby.gemspec
 ```
 
 Run these commands from the project root. Tests require Minitest. If Rake is installed, you can also run `rake test`.
@@ -19,9 +19,9 @@ Run these commands from the project root. Tests require Minitest. If Rake is ins
 Run the snippet with `ruby -Ilib`.
 
 ```ruby
-require 'rubygrad'
-x = Rubygrad::Tensor.new([[1, 2], [3, 4]])
-w = Rubygrad::Tensor.new([[2], [1]])
+require 'tensorruby'
+x = TensorRuby::Tensor.new([[1, 2], [3, 4]])
+w = TensorRuby::Tensor.new([[2], [1]])
 output = x.matmul(w) + 1
 output.sum.backward
 p output.to_a            # [[5.0], [11.0]]
@@ -34,15 +34,15 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 ## Train an XOR model
 
-Create tensors with `Rubygrad.tensor` and compose layers with `NN::Sequential`. Run the complete example with `ruby examples/xor.rb`.
+Create tensors with `TensorRuby.tensor` and compose layers with `NN::Sequential`. Run the complete example with `ruby examples/xor.rb`.
 
 ```ruby
-require 'rubygrad'
+require 'tensorruby'
 
-nn = Rubygrad::NN
+nn = TensorRuby::NN
 random = Random.new(42)
-x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = Rubygrad.tensor([[0], [1], [1], [0]])
+x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = TensorRuby.tensor([[0], [1], [1], [0]])
 
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
@@ -50,7 +50,7 @@ model = nn::Sequential.new(
   nn::Linear.new(8, 1, random: random)
 )
 criterion = nn::MSELoss.new
-optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 
 500.times do
   optimizer.zero_grad

@@ -1,7 +1,7 @@
 require 'minitest/autorun'
-require 'rubygrad'
-class RubygradTest < Minitest::Test
-  include Rubygrad
+require 'tensorruby'
+class TensorRubyTest < Minitest::Test
+  include TensorRuby
   def test_shared_graph_and_repeated_backward
     x, y = Value.new(2), Value.new(3); z = x*x + x*y
     z.backward; assert_in_delta 7, x.grad; assert_in_delta 2, y.grad

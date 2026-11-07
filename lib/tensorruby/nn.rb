@@ -1,4 +1,4 @@
-module Rubygrad
+module TensorRuby
   module NN
     class Module
       def parameters

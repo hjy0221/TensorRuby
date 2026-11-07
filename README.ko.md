@@ -1,4 +1,4 @@
-# rubygrad
+# TensorRuby
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
@@ -7,9 +7,9 @@ Pure Ruby로 작성한 작은 딥러닝 프레임워크입니다. 외부 딥러�
 ## 실행
 
 ```sh
-ruby -Ilib test/rubygrad_test.rb
+ruby -Ilib test/tensorruby_test.rb
 ruby examples/regression.rb
-gem build rubygrad.gemspec
+gem build tensorruby.gemspec
 ```
 
 `rake`가 설치되어 있다면 `rake test`도 사용할 수 있습니다. 런타임 의존성은 없으며 테스트에는 Minitest가 필요합니다.
@@ -17,9 +17,9 @@ gem build rubygrad.gemspec
 ## 사용법
 
 ```ruby
-require 'rubygrad'
-x = Rubygrad::Tensor.new([[1, 2], [3, 4]])
-w = Rubygrad::Tensor.new([[2], [1]])
+require 'tensorruby'
+x = TensorRuby::Tensor.new([[1, 2], [3, 4]])
+w = TensorRuby::Tensor.new([[2], [1]])
 output = x.matmul(w) + 1
 output.sum.backward
 p output.to_a            # [[5.0], [11.0]]
@@ -32,15 +32,15 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 ## XOR 모델 학습
 
-`Rubygrad.tensor`로 텐서를 만들고 `NN::Sequential`로 층을 연결합니다. 전체 예제는 `ruby examples/xor.rb`로 실행할 수 있습니다.
+`TensorRuby.tensor`로 텐서를 만들고 `NN::Sequential`로 층을 연결합니다. 전체 예제는 `ruby examples/xor.rb`로 실행할 수 있습니다.
 
 ```ruby
-require 'rubygrad'
+require 'tensorruby'
 
-nn = Rubygrad::NN
+nn = TensorRuby::NN
 random = Random.new(42)
-x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = Rubygrad.tensor([[0], [1], [1], [0]])
+x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = TensorRuby.tensor([[0], [1], [1], [0]])
 
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
@@ -48,7 +48,7 @@ model = nn::Sequential.new(
   nn::Linear.new(8, 1, random: random)
 )
 criterion = nn::MSELoss.new
-optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 
 500.times do
   optimizer.zero_grad

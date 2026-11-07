@@ -1,4 +1,4 @@
-module Rubygrad
+module TensorRuby
   class Value
     attr_accessor :data, :grad
     attr_reader :parents

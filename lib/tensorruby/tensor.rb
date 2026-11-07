@@ -1,4 +1,4 @@
-module Rubygrad
+module TensorRuby
   # Row-major contiguous scalar-backed tensor.
   class Tensor
     attr_reader :shape, :strides

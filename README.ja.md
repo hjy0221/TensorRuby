@@ -1,15 +1,15 @@
-# rubygrad
+# TensorRuby
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-rubygrad は Pure Ruby で実装した小さな深層学習フレームワークです。Ruby 2.7 以上が必要で、実行時の外部依存関係はありません。
+TensorRuby は Pure Ruby で実装した小さな深層学習フレームワークです。Ruby 2.7 以上が必要で、実行時の外部依存関係はありません。
 
 ## 実行方法
 
 ```sh
-ruby -Ilib test/rubygrad_test.rb
+ruby -Ilib test/tensorruby_test.rb
 ruby examples/regression.rb
-gem build rubygrad.gemspec
+gem build tensorruby.gemspec
 ```
 
 プロジェクトのルートで実行してください。テストには Minitest が必要です。Rake がインストールされていれば、`rake test` でも実行できます。
@@ -19,9 +19,9 @@ gem build rubygrad.gemspec
 `ruby -Ilib` で以下のコードを実行できます。
 
 ```ruby
-require 'rubygrad'
-x = Rubygrad::Tensor.new([[1, 2], [3, 4]])
-w = Rubygrad::Tensor.new([[2], [1]])
+require 'tensorruby'
+x = TensorRuby::Tensor.new([[1, 2], [3, 4]])
+w = TensorRuby::Tensor.new([[2], [1]])
 output = x.matmul(w) + 1
 output.sum.backward
 p output.to_a            # [[5.0], [11.0]]
@@ -34,15 +34,15 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 ## XOR モデルの学習
 
-`Rubygrad.tensor` でテンソルを作り、`NN::Sequential` で層を組み合わせます。サンプル全体は `ruby examples/xor.rb` で実行できます。
+`TensorRuby.tensor` でテンソルを作り、`NN::Sequential` で層を組み合わせます。サンプル全体は `ruby examples/xor.rb` で実行できます。
 
 ```ruby
-require 'rubygrad'
+require 'tensorruby'
 
-nn = Rubygrad::NN
+nn = TensorRuby::NN
 random = Random.new(42)
-x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = Rubygrad.tensor([[0], [1], [1], [0]])
+x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = TensorRuby.tensor([[0], [1], [1], [0]])
 
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
@@ -50,7 +50,7 @@ model = nn::Sequential.new(
   nn::Linear.new(8, 1, random: random)
 )
 criterion = nn::MSELoss.new
-optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 
 500.times do
   optimizer.zero_grad

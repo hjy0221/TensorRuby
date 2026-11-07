@@ -1,4 +1,4 @@
-module Rubygrad
+module TensorRuby
   module Optim
     class SGD
       def initialize(parameters, lr:)
