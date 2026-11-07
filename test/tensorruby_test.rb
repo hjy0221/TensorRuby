@@ -1,4 +1,5 @@
 require 'minitest/autorun'
+require 'tmpdir'
 require 'tensorruby'
 class TensorRubyTest < Minitest::Test
   include TensorRuby
@@ -174,12 +175,16 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { schedule.add_noise([[1]], [2], 0) }
 
     visited = []
-    output = schedule.sample([1, 2], random: Random.new(2)) do |_noisy, step|
+    frames = []
+    observer = ->(remaining, sample) { frames << [remaining, sample.to_a] }
+    output = schedule.sample([1, 2], random: Random.new(2), on_step: observer) do |_noisy, step|
       visited << step
       refute TensorRuby.grad_enabled?
       [[0, 0]]
     end
     assert_equal [2, 1, 0], visited
+    assert_equal [3, 2, 1, 0], frames.map(&:first)
+    assert_equal output.to_a, frames.last.last
     assert_equal [1, 2], output.shape
     assert output.to_a.flatten.all?(&:finite?)
   end
@@ -212,6 +217,32 @@ class TensorRubyTest < Minitest::Test
     windows = Text::NextTokenWindows.new(%w[abcde xy], tokenizer: tokenizer, context_size: 2)
     decoded = windows.map { |input, target| [tokenizer.decode(input), tokenizer.decode(target)] }
     assert_equal [%w[ab bc], %w[cd de], %w[x y]], decoded
+  end
+
+  def test_checkpoint_preserves_byte_vocabulary_and_gpt_predictions
+    tokenizer = Text::BytePairTokenizer.train(['hello hello'])
+    vocabulary = Chat::ByteVocabulary.new(tokenizer)
+    model = NN::GPT.new(vocab_size: vocabulary.size, context_size: 8, features: 4,
+                        heads: 2, layers: 1, random: Random.new(3))
+    input = vocabulary.encode('hello')
+    assert_equal '新語', vocabulary.decode(vocabulary.encode('新語'))
+    assert input.all? { |id| id >= Chat::Vocabulary::FIRST_WORD }
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'model.json')
+      Text::Checkpoint.save(path, model, vocabulary)
+      reloaded, reloaded_vocabulary = Text::Checkpoint.load(path)
+      assert_equal input, reloaded_vocabulary.encode('hello')
+      assert_equal model.call(input).to_a, reloaded.call(input).to_a
+    end
+  end
+
+  def test_global_gradient_norm_clipping
+    left, right = Value.new(0), Value.new(0)
+    left.grad = 3
+    right.grad = 4
+    assert_in_delta 5, Optim.clip_grad_norm([left, right, left], 2), 1e-12
+    assert_in_delta 1.2, left.grad, 1e-12
+    assert_in_delta 1.6, right.grad, 1e-12
   end
 
   def test_regression

@@ -2,11 +2,14 @@ module TensorRuby
   module NN
     # GPT-2-style decoder for one sequence of pre-tokenized integer IDs.
     class GPT < Module
+      attr_reader :config
       def initialize(vocab_size:, context_size:, features:, heads:, layers:, random: Random.new)
         unless [vocab_size, context_size, features, layers].all? { |n| n.is_a?(Integer) && n.positive? }
           raise ArgumentError, 'vocabulary, context, features, and layers must be positive integers'
         end
 
+        @config = { vocab_size: vocab_size, context_size: context_size, features: features,
+                    heads: heads, layers: layers }.freeze
         @context_size = context_size
         @tokens = embedding(vocab_size, features, random)
         @positions = embedding(context_size, features, random)

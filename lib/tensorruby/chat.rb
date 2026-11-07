@@ -43,6 +43,33 @@ module TensorRuby
       end
     end
 
+    # Reserves chat role IDs without restricting input to known words.
+    class ByteVocabulary < Vocabulary
+      attr_reader :tokenizer
+
+      def initialize(tokenizer)
+        @tokenizer = tokenizer
+      end
+
+      def size
+        tokenizer.size + FIRST_WORD
+      end
+
+      def encode(text)
+        raise ArgumentError, 'message must contain text' if text.strip.empty?
+
+        encode_document(text)
+      end
+
+      def encode_document(text)
+        tokenizer.encode(text).map { |id| id + FIRST_WORD }
+      end
+
+      def decode(ids)
+        tokenizer.decode(ids.take_while { |id| id >= FIRST_WORD }.map { |id| id - FIRST_WORD })
+      end
+    end
+
     class Session
       def initialize(model, vocabulary, max_reply_tokens: 12)
         unless max_reply_tokens.is_a?(Integer) && max_reply_tokens.positive?

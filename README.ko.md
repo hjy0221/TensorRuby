@@ -92,7 +92,7 @@ GPT-2 형태의 디코더는 정수 토큰 ID를 받아 다음 토큰을 예측�
 ruby examples/gpt.rb
 ruby examples/transformer.rb
 ruby examples/diffusion.rb
-ruby examples/image_diffusion.rb diffusion-samples.png
+ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
 ```
 
 ## 대화 모델과 몬스터 스프라이트
@@ -120,6 +120,16 @@ ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 ```sh
 ruby examples/pretrain.rb
 ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
+## 체크포인트 미세조정과 텍스트 생성
+
+사전학습은 여러 시퀀스의 기울기를 토큰 수에 비례해 누적하고 전체 기울기 노름을 제한합니다. 학습률은 워밍업 뒤 코사인 형태로 줄입니다. 설정·가중치·병합 규칙은 JSON으로 저장하며, 미세조정의 손실에는 어시스턴트 토큰만 포함합니다.
+
+```sh
+ruby examples/pretrain.rb --save pretrained.json
+ruby examples/finetune.rb --save chat-model.json pretrained.json
+ruby examples/generate.rb --chat chat-model.json "하늘?"
 ```
 
 ## 확장 방향

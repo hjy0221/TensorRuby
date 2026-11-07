@@ -92,7 +92,7 @@ The GPT-2-style decoder accepts integer token IDs and trains with next-token cro
 ruby examples/gpt.rb
 ruby examples/transformer.rb
 ruby examples/diffusion.rb
-ruby examples/image_diffusion.rb diffusion-samples.png
+ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
 ```
 
 ## Chat and monster sprites
@@ -120,6 +120,16 @@ Train a byte-pair tokenizer and a small GPT from scratch. The tokenizer can enco
 ```sh
 ruby examples/pretrain.rb
 ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
+## Fine-tune a checkpoint and generate text
+
+Pretraining accumulates token-weighted gradients across sequences, clips their global norm, and uses warmup followed by cosine decay. The JSON checkpoint stores model weights, configuration, and byte-pair merges. Fine-tuning uses assistant tokens only.
+
+```sh
+ruby examples/pretrain.rb --save pretrained.json
+ruby examples/finetune.rb --save chat-model.json pretrained.json
+ruby examples/generate.rb --chat chat-model.json "하늘?"
 ```
 
 ## Backend roadmap

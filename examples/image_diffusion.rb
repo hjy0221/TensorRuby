@@ -52,31 +52,46 @@ end
 
 model.eval
 final_loss = evaluate.call
-images = schedule.sample([8, pixels], random: random, &predict_noise).to_a
+trajectory_path = ARGV[1]
+frames = []
+observer = if trajectory_path
+             lambda do |remaining, sample|
+               frames << sample.to_a if (remaining % 6).zero?
+             end
+           end
+images = schedule.sample([8, pixels], random: random, on_step: observer, &predict_noise).to_a
 unless final_loss < initial_loss && images.flatten.all?(&:finite?)
   abort 'Image diffusion training failed'
 end
 
 # Write a grayscale PNG contact sheet, enlarging each pixel for inspection.
-scale = 12
-tile = side * scale
-width, height = 4 * tile, 2 * tile
-scanlines = Array.new(height) do |y|
-  row = Array.new(width) do |x|
-    image = images[(y / tile) * 4 + x / tile]
-    pixel = image[((y % tile) / scale) * side + (x % tile) / scale]
-    ((pixel.clamp(-1.0, 1.0) + 1.0) * 127.5).round
+write_sheet = lambda do |samples, columns, path|
+  scale = 12
+  tile = side * scale
+  width = columns * tile
+  height = (samples.size / columns) * tile
+  scanlines = Array.new(height) do |y|
+    row = Array.new(width) do |x|
+      image = samples[(y / tile) * columns + x / tile]
+      pixel = image[((y % tile) / scale) * side + (x % tile) / scale]
+      ((pixel.clamp(-1.0, 1.0) + 1.0) * 127.5).round
+    end
+    [0, *row].pack('C*')
+  end.join
+  chunk = lambda do |type, data|
+    [data.bytesize].pack('N') + type + data + [Zlib.crc32(type + data)].pack('N')
   end
-  [0, *row].pack('C*')
-end.join
-chunk = lambda do |type, data|
-  [data.bytesize].pack('N') + type + data + [Zlib.crc32(type + data)].pack('N')
+  png = "\x89PNG\r\n\x1a\n".b
+  png << chunk.call('IHDR', [width, height, 8, 0, 0, 0, 0].pack('NNC5'))
+  png << chunk.call('IDAT', Zlib.deflate(scanlines))
+  png << chunk.call('IEND', ''.b)
+  File.binwrite(path, png)
 end
-png = "\x89PNG\r\n\x1a\n".b
-png << chunk.call('IHDR', [width, height, 8, 0, 0, 0, 0].pack('NNC5'))
-png << chunk.call('IDAT', Zlib.deflate(scanlines))
-png << chunk.call('IEND', ''.b)
 path = ARGV.fetch(0, 'diffusion-samples.png')
-File.binwrite(path, png)
+write_sheet.call(images, 4, path)
+if trajectory_path
+  write_sheet.call(frames.transpose.flatten(1), frames.size, trajectory_path)
+  puts "Reverse diffusion trajectory: #{trajectory_path}"
+end
 puts format('Held-out image noise MSE: %.4f -> %.4f', initial_loss, final_loss)
 puts "Generated #{images.size} images: #{path}"

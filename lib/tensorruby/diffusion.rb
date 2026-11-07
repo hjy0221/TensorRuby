@@ -43,11 +43,13 @@ module TensorRuby
       end
 
       # The block receives the current noisy tensor and timestep and predicts noise.
-      def sample(shape, random: Random.new)
+      # The optional observer receives (remaining_steps, sample) from initial noise to zero.
+      def sample(shape, random: Random.new, on_step: nil)
         raise ArgumentError, 'a noise predictor block is required' unless block_given?
 
         TensorRuby.no_grad do
           current = self.class.normal(shape, random: random)
+          on_step.call(steps, current) if on_step
           (steps - 1).downto(0) do |step|
             noise = Tensor.wrap(yield(current, step))
             raise ArgumentError, 'predicted noise shape must match sample shape' unless noise.shape == current.shape
@@ -55,10 +57,11 @@ module TensorRuby
             beta = @betas[step]
             remaining_noise = 1.0 - @cumulative[step]
             current = (current - noise * (beta / Math.sqrt(remaining_noise))) / Math.sqrt(@alphas[step])
-            next if step.zero?
-
-            variance = beta * (1.0 - @cumulative[step - 1]) / remaining_noise
-            current += self.class.normal(shape, random: random) * Math.sqrt(variance)
+            if step.positive?
+              variance = beta * (1.0 - @cumulative[step - 1]) / remaining_noise
+              current += self.class.normal(shape, random: random) * Math.sqrt(variance)
+            end
+            on_step.call(step, current) if on_step
           end
           current
         end

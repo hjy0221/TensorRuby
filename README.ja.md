@@ -92,7 +92,7 @@ GPT-2 形式のデコーダーは整数トークン ID を受け取り、次ト�
 ruby examples/gpt.rb
 ruby examples/transformer.rb
 ruby examples/diffusion.rb
-ruby examples/image_diffusion.rb diffusion-samples.png
+ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
 ```
 
 ## 対話とモンスターのスプライト
@@ -120,6 +120,16 @@ ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 ```sh
 ruby examples/pretrain.rb
 ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+```
+
+## チェックポイントから追加学習して生成
+
+事前学習では複数の系列の勾配をトークン数で重み付けして累積し、勾配ノルムをクリップします。学習率はウォームアップ後にコサイン減衰させます。JSON に設定、重み、結合規則を保存し、アシスタントのトークンだけを追加学習します。
+
+```sh
+ruby examples/pretrain.rb --save pretrained.json
+ruby examples/finetune.rb --save chat-model.json pretrained.json
+ruby examples/generate.rb --chat chat-model.json "하늘?"
 ```
 
 ## 今後の拡張

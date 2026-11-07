@@ -1,5 +1,21 @@
 module TensorRuby
   module Optim
+    def self.clip_grad_norm(parameters, max_norm)
+      unless max_norm.is_a?(Numeric) && max_norm.real? && max_norm.finite? && max_norm.positive?
+        raise ArgumentError, 'max_norm must be positive and finite'
+      end
+
+      parameters = parameters.to_a.uniq
+      norm = parameters.reduce(0.0) { |total, parameter| Math.hypot(total, parameter.grad) }
+      raise ArgumentError, 'gradient norm is nonfinite' unless norm.finite?
+
+      if norm > max_norm
+        scale = max_norm / norm
+        parameters.each { |parameter| parameter.grad *= scale }
+      end
+      norm
+    end
+
     class SGD
       def initialize(parameters, lr:)
         raise ArgumentError, 'learning rate must be positive and finite' unless lr.is_a?(Numeric) && lr.finite? && lr.positive?
@@ -36,7 +52,11 @@ module TensorRuby
         self
       end
 
-      def step
+      def step(lr: @lr)
+        unless lr.is_a?(Numeric) && lr.real? && lr.finite? && lr.positive?
+          raise ArgumentError, 'learning rate must be positive and finite'
+        end
+
         @step += 1
         first_correction = 1 - @beta1**@step
         second_correction = 1 - @beta2**@step
@@ -47,7 +67,7 @@ module TensorRuby
           @second[i] = @beta2 * @second[i] + (1 - @beta2) * grad * grad
           mean = @first[i] / first_correction
           variance = @second[i] / second_correction
-          parameter.data -= @lr * mean / (Math.sqrt(variance) + @eps)
+          parameter.data -= lr * mean / (Math.sqrt(variance) + @eps)
         end
         self
       end

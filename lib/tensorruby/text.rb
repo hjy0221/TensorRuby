@@ -1,3 +1,5 @@
+require 'json'
+
 module TensorRuby
   module Text
     # Learns byte-pair merges while keeping all 256 UTF-8 byte values available.
@@ -82,6 +84,46 @@ module TensorRuby
       end
     end
 
+    # Stores a GPT and its byte vocabulary in a data-only JSON file.
+    module Checkpoint
+      CONFIG_KEYS = %w[vocab_size context_size features heads layers].freeze
+
+      def self.save(path, model, vocabulary)
+        unless model.config.fetch(:vocab_size) == vocabulary.size
+          raise ArgumentError, 'model and vocabulary sizes must match'
+        end
+
+        File.write(path, JSON.generate(
+          'format' => 1, 'config' => model.config, 'merges' => vocabulary.tokenizer.merges,
+          'weights' => model.parameters.map(&:data)
+        ))
+      end
+
+      def self.load(path)
+        data = JSON.parse(File.read(path))
+        config = data.fetch('config')
+        unless data['format'] == 1 && config.keys.sort == CONFIG_KEYS.sort
+          raise ArgumentError, 'unsupported GPT checkpoint format'
+        end
+
+        vocabulary = Chat::ByteVocabulary.new(BytePairTokenizer.new(data.fetch('merges')))
+        unless config.fetch('vocab_size') == vocabulary.size
+          raise ArgumentError, 'checkpoint vocabulary size mismatch'
+        end
+
+        model = NN::GPT.new(**config.transform_keys(&:to_sym))
+        parameters = model.parameters
+        weights = data.fetch('weights')
+        unless weights.is_a?(Array) && weights.size == parameters.size &&
+               weights.all? { |weight| weight.is_a?(Numeric) && weight.to_f.finite? }
+          raise ArgumentError, 'checkpoint weights do not match the model'
+        end
+
+        parameters.zip(weights).each { |parameter, weight| parameter.data = weight.to_f }
+        [model, vocabulary]
+      end
+    end
+
     class NextTokenWindows
       include Enumerable
 
@@ -90,7 +132,9 @@ module TensorRuby
           raise ArgumentError, 'context size and stride must be positive integers'
         end
 
-        @documents = documents.map { |text| tokenizer.encode(text) }
+        @documents = documents.map do |text|
+          tokenizer.respond_to?(:encode_document) ? tokenizer.encode_document(text) : tokenizer.encode(text)
+        end
         @context_size, @stride = context_size, stride
       end
 
