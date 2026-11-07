@@ -2,7 +2,16 @@
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-Pure Ruby로 작성한 작은 딥러닝 프레임워크입니다. 외부 딥러닝 프레임워크나 네이티브 수치 라이브러리에 의존하지 않습니다. Ruby 2.7 이상이 필요합니다.
+Pure Ruby로 작성한 작은 딥러닝 프레임워크입니다. 외부 딥러닝 프레임워크나 네이티브 수치 라이브러리에 의존하지 않습니다. Ruby 2.6 이상이 필요합니다.
+
+## 설치
+
+GitHub 최신 릴리스에서 gem을 설치합니다.
+
+```sh
+curl -fL https://github.com/hjy0221/TensorRuby/releases/latest/download/tensorruby.gem -o tensorruby.gem
+gem install --local tensorruby.gem
+```
 
 ## 실행
 
@@ -15,6 +24,8 @@ gem build tensorruby.gemspec
 `rake`가 설치되어 있다면 `rake test`도 사용할 수 있습니다. 런타임 의존성은 없으며 테스트에는 Minitest가 필요합니다.
 
 ## 사용법
+
+설치한 뒤 아래 코드를 `ruby`로 실행하세요.
 
 ```ruby
 require 'tensorruby'

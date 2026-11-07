@@ -2,7 +2,16 @@
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-TensorRuby is a small deep learning framework written in pure Ruby. It requires Ruby 2.7 or later and has no runtime dependencies.
+TensorRuby is a small deep learning framework written in pure Ruby. It requires Ruby 2.6 or later and has no runtime dependencies.
+
+## Installation
+
+Install the gem from the latest GitHub release.
+
+```sh
+curl -fL https://github.com/hjy0221/TensorRuby/releases/latest/download/tensorruby.gem -o tensorruby.gem
+gem install --local tensorruby.gem
+```
 
 ## Getting started
 
@@ -16,7 +25,7 @@ Run these commands from the project root. Tests require Minitest. If Rake is ins
 
 ## Usage
 
-Run the snippet with `ruby -Ilib`.
+After installing, run the snippet with `ruby`.
 
 ```ruby
 require 'tensorruby'

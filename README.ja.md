@@ -2,7 +2,16 @@
 
 [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-TensorRuby は Pure Ruby で実装した小さな深層学習フレームワークです。Ruby 2.7 以上が必要で、実行時の外部依存関係はありません。
+TensorRuby は Pure Ruby で実装した小さな深層学習フレームワークです。Ruby 2.6 以上が必要で、実行時の外部依存関係はありません。
+
+## インストール
+
+GitHub の最新リリースから gem をインストールします。
+
+```sh
+curl -fL https://github.com/hjy0221/TensorRuby/releases/latest/download/tensorruby.gem -o tensorruby.gem
+gem install --local tensorruby.gem
+```
 
 ## 実行方法
 
@@ -16,7 +25,7 @@ gem build tensorruby.gemspec
 
 ## 使い方
 
-`ruby -Ilib` で以下のコードを実行できます。
+インストール後、以下のコードを `ruby` で実行できます。
 
 ```ruby
 require 'tensorruby'
