@@ -69,6 +69,10 @@ optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 end
 ```
 
+## 多クラス分類
+
+`NN::CrossEntropyLoss` に形状が `[batch, classes]` のロジットと、形状が `[batch]` の整数クラス番号を渡します。`Optim::Adam` は学習ステップ間でモーメントを保持します。3 クラスの例は `ruby examples/classification.rb` で実行できます。
+
 ## 今後の拡張
 
 現在のスカラー計算グラフは演算の正しさを検証しやすい一方、大規模なモデルでは計算時間とメモリ使用量が増えます。将来は形状とストライドの情報からストレージと演算カーネルを分離し、テンソル単位のベクトル・ヤコビアン積を導入することで、Rust/C++ による CPU バックエンドや GPU バックエンドに接続できます。

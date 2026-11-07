@@ -69,6 +69,10 @@ optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 end
 ```
 
+## 다중 클래스 분류
+
+`NN::CrossEntropyLoss`에는 `[batch, classes]` 형태의 로짓과 `[batch]` 형태의 정수 클래스 인덱스를 전달합니다. `Optim::Adam`은 학습 단계 사이에 모멘트를 유지합니다. `ruby examples/classification.rb`로 3개 클래스를 분류하는 예제를 실행할 수 있습니다.
+
 ## 확장 방향
 
 현재 텐서 구현은 정확성 검증을 위한 스칼라 그래프 방식이므로 큰 모델에는 느리고 메모리 사용량이 큽니다. 향후 shape/stride 메타데이터와 연산 API를 유지하면서 저장소와 커널을 백엔드 인터페이스로 분리하고, 텐서 단위 VJP를 도입해 Rust/C++ CPU 또는 GPU 백엔드를 연결할 수 있습니다. 현재 이러한 백엔드나 연결 코드는 포함하지 않습니다.

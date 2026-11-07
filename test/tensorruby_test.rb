@@ -35,6 +35,29 @@ class TensorRubyTest < Minitest::Test
     assert_equal [[0.0,2.0]], NN::ReLU.new.call([[-1,2]]).to_a
     assert_raises(ArgumentError) { NN::MSELoss.new.call([1], [[1]]) }
   end
+  def test_cross_entropy_with_large_logits_and_batch_gradients
+    logits = Tensor.new([[1000, 1000, 1000], [-1000, -1000, -1000]])
+    loss = NN::CrossEntropyLoss.new.call(logits, [0, 2])
+    assert_in_delta Math.log(3), loss.data, 1e-12
+    loss.backward(2.0)
+    expected = [-2.0/3, 1.0/3, 1.0/3, 1.0/3, 1.0/3, -2.0/3]
+    logits.values.zip(expected).each { |value, grad| assert_in_delta grad, value.grad, 1e-12 }
+    assert_raises(ArgumentError) { NN::CrossEntropyLoss.new.call(logits, [0, 3]) }
+  end
+
+  def test_adam_keeps_moments_across_steps
+    parameter = Value.new(1)
+    optimizer = Optim::Adam.new([parameter], lr: 0.1, betas: [0.5, 0.5])
+    parameter.backward
+    optimizer.step
+    assert_in_delta 0.9, parameter.data, 1e-8
+    optimizer.zero_grad
+    parameter.backward(3.0)
+    optimizer.step
+    expected = 0.9 - 0.1 * (7.0 / 3) / Math.sqrt(19.0 / 3)
+    assert_in_delta expected, parameter.data, 1e-8
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

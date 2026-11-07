@@ -69,6 +69,10 @@ optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
 end
 ```
 
+## Multiclass classification
+
+Use `NN::CrossEntropyLoss` with raw logits shaped `[batch, classes]` and integer class indices shaped `[batch]`. `Optim::Adam` keeps its running moments across training steps. Run the three-class example with `ruby examples/classification.rb`.
+
 ## Backend roadmap
 
 The scalar graph makes the current engine easy to check, but uses substantial time and memory for large models. A future backend interface could separate storage and kernels from shape and stride metadata. Tensor-level vector–Jacobian products could then support Rust/C++ CPU or GPU backends.
