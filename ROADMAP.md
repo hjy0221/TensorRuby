@@ -1,5 +1,7 @@
 # TensorRuby roadmap
 
+[English](ROADMAP.md) · [日本語](ROADMAP.ja.md) · [한국어](ROADMAP.ko.md)
+
 The long-term target is a general-purpose Ruby framework capable of running practical PyTorch-style research and training workloads. Progress is measured in supported workloads, numerical agreement, performance, and ease of installation. API names follow Ruby conventions.
 
 | Milestone | Deliverables | Exit criteria |
