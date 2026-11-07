@@ -35,23 +35,19 @@ make_batch = lambda do
   [schedule.add_noise(clean, noise, step), noise, step]
 end
 
-validation = Array.new(12) { make_batch.call }
-evaluate = lambda do
-  TensorRuby.no_grad do
-    validation.sum { |noisy, noise, step| loss_fn.call(predict_noise.call(noisy, step), noise).data } / validation.size
-  end
-end
-
-initial_loss = evaluate.call
-400.times do
+# A training example carries the noisy input and its timestep together.
+example = lambda do
   noisy, noise, step = make_batch.call
-  optimizer.zero_grad
-  loss_fn.call(predict_noise.call(noisy, step), noise).backward
-  optimizer.step
+  [[noisy, step], noise]
 end
-
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: loss_fn, forward: ->(input) { predict_noise.call(*input) }
+)
+validation = Array.new(12) { example.call }
+initial_loss = trainer.evaluate(validation)
+400.times { trainer.train_epoch([example.call]) }
+final_loss = trainer.evaluate(validation)
 model.eval
-final_loss = evaluate.call
 trajectory_path = ARGV[1]
 frames = []
 observer = if trajectory_path

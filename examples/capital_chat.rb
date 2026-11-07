@@ -5,6 +5,7 @@ require 'optparse'
 
 options = { epochs: 32 }
 OptionParser.new do |parser|
+  parser.on('--data FILE') { |value| options[:data] = value }
   parser.on('--epochs N', Integer) { |value| options[:epochs] = value }
   parser.on('--save FILE') { |value| options[:save] = value }
   parser.on('--load FILE') { |value| options[:load] = value }
@@ -12,7 +13,7 @@ OptionParser.new do |parser|
 end.parse!
 abort 'epochs must be positive' unless options[:epochs].positive?
 
-facts = JSON.parse(File.read(File.join(__dir__, 'data', 'capitals.json')))
+facts = JSON.parse(File.read(options[:data] || File.join(__dir__, 'data', 'capitals.json')))
 phrases = {
   'ko' => ['수도 알려줘', '수도 말해줘', '알려줘 수도'],
   'ja' => ['首都 教えて', '首都 どこ', '教えて 首都'],
@@ -47,15 +48,10 @@ if options[:load]
 else
   optimizer = TensorRuby::Optim::Adam.new(parameters, lr: 0.008)
   criterion = nn::CrossEntropyLoss.new(ignore_index: chat::Vocabulary::IGNORE)
+  trainer = TensorRuby::Training::Trainer.new(model, optimizer: optimizer, loss: criterion)
   options[:epochs].times do |epoch|
-    total = examples.shuffle(random: random).sum do |input, target|
-      optimizer.zero_grad
-      loss = criterion.call(model.call(input), target)
-      loss.backward
-      optimizer.step
-      loss.data
-    end
-    puts format('Epoch %d loss %.4f', epoch + 1, total / examples.size) if ((epoch + 1) % 8).zero?
+    mean = trainer.train_epoch(examples.shuffle(random: random))
+    puts format('Epoch %d loss %.4f', epoch + 1, mean) if ((epoch + 1) % 8).zero?
   end
 end
 if options[:save]

@@ -18,13 +18,8 @@ samples = [0, 1].repeated_permutation(3).map do |bits|
   [TensorRuby.tensor(features), TensorRuby.tensor([bits.first] * bits.size)]
 end
 
-60.times do
-  samples.shuffle(random: random).each do |input, labels|
-    optimizer.zero_grad
-    loss_fn.call(model.call(input), labels).backward
-    optimizer.step
-  end
-end
+trainer = TensorRuby::Training::Trainer.new(model, optimizer: optimizer, loss: loss_fn)
+60.times { trainer.train_epoch(samples.shuffle(random: random)) }
 
 model.eval
 correct = TensorRuby.no_grad do

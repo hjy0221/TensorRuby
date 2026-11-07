@@ -13,11 +13,33 @@ curl -fL https://github.com/hjy0221/TensorRuby/releases/latest/download/tensorru
 gem install --local tensorruby.gem
 ```
 
+## 独自のモデルを学習
+
+gem をインストールすると、任意のディレクトリからサンプルを確認して実行できます。自作の Ruby コードでは `require "tensorruby"` で読み込みます。Trainer には `[入力, 正解]` の組を渡します。組ごとにバッチ全体を渡せます。
+
+```sh
+tensorruby examples
+tensorruby run xor
+```
+
+```ruby
+require 'tensorruby'
+
+model = TensorRuby::NN::Linear.new(1, 1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.05)
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: TensorRuby::NN::MSELoss.new
+)
+data = [[TensorRuby.tensor([[0], [1], [2]]), TensorRuby.tensor([[1], [3], [5]])]]
+200.times { trainer.train_epoch(data) }
+p model.call([[3]]).to_a
+```
+
 ## 実行方法
 
 ```sh
 ruby -Ilib test/tensorruby_test.rb
-ruby examples/regression.rb
+ruby bin/tensorruby run regression
 gem build tensorruby.gemspec
 ```
 
@@ -43,35 +65,11 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 ## XOR モデルの学習
 
-`TensorRuby.tensor` でテンソルを作り、`NN::Sequential` で層を組み合わせます。サンプル全体は `ruby examples/xor.rb` で実行できます。
-
-```ruby
-require 'tensorruby'
-
-nn = TensorRuby::NN
-random = Random.new(42)
-x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = TensorRuby.tensor([[0], [1], [1], [0]])
-
-model = nn::Sequential.new(
-  nn::Linear.new(2, 8, random: random),
-  nn::ReLU.new,
-  nn::Linear.new(8, 1, random: random)
-)
-criterion = nn::MSELoss.new
-optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
-
-500.times do
-  optimizer.zero_grad
-  loss = criterion.call(model.call(x), target)
-  loss.backward
-  optimizer.step
-end
-```
+`TensorRuby.tensor` でテンソルを作り、`NN::Sequential` で層を組み合わせます。サンプル全体は `tensorruby run xor` で実行できます。
 
 ## 多クラス分類
 
-`NN::CrossEntropyLoss` に形状が `[batch, classes]` のロジットと、形状が `[batch]` の整数クラス番号を渡します。`Optim::Adam` は学習ステップ間でモーメントを保持します。3 クラスの例は `ruby examples/classification.rb` で実行できます。
+`NN::CrossEntropyLoss` に形状が `[batch, classes]` のロジットと、形状が `[batch]` の整数クラス番号を渡します。`Optim::Adam` は学習ステップ間でモーメントを保持します。3 クラスの例は `tensorruby run classification` で実行できます。
 
 `Data::DataLoader.new(samples, batch_size: 8)` は `[入力, 正解]` の組をミニバッチにまとめ、エポックごとにシャッフルします。
 
@@ -89,10 +87,10 @@ predictions = TensorRuby.no_grad { model.call(x).to_a }
 GPT-2 形式のデコーダーは整数トークン ID を受け取り、次トークン予測を学習します。トークンと位置の埋め込み、因果マルチヘッド注意、事前レイヤー正規化、GELU、埋め込みと出力の重み共有を備えます。拡散モデルは合成点群と白黒の縞模様を学習し、画像版は生成した 6×6 の画像 8 枚を PNG に保存します。
 
 ```sh
-ruby examples/gpt.rb
-ruby examples/transformer.rb
-ruby examples/diffusion.rb
-ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
+tensorruby run gpt
+tensorruby run transformer
+tensorruby run diffusion
+tensorruby run image_diffusion diffusion-samples.png diffusion-trajectory.png
 ```
 
 ## 対話とモンスターのスプライト
@@ -100,8 +98,8 @@ ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
 付属の韓国語・日本語・英語の対話で小さな対話モデルを学習できます。`--data FILE` には `[ユーザー, アシスタント]` の組を含む対話の JSON 配列を指定できます。語彙は空白区切りの学習データに限定されます。スプライトは固定の輪郭と、拡散モデルで生成した色や目の変化を組み合わせます。
 
 ```sh
-ruby examples/chat.rb --interactive
-ruby examples/monster_diffusion.rb all monster-sprites.png
+tensorruby run chat --interactive
+tensorruby run monster_diffusion all monster-sprites.png
 ```
 
 ## 多言語の首都モデルを学習して読み込む
@@ -109,8 +107,8 @@ ruby examples/monster_diffusion.rb all monster-sprites.png
 12 か国の首都を 3 言語で学習し、保存した重みを再学習せずに読み込めます。学習済みの質問と、同じ単語を並べ替えた質問の完全一致率を表示します。
 
 ```sh
-ruby examples/capital_chat.rb --save capital-chat-weights.json
-ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
+tensorruby run capital_chat --save capital-chat-weights.json
+tensorruby run capital_chat --load capital-chat-weights.json --interactive
 ```
 
 ## 生テキストで事前学習
@@ -118,8 +116,8 @@ ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 バイトペアトークナイザーと小さな GPT をゼロから学習します。UTF-8 の任意の文字列をトークン化できます。学習用と検証用に、1 行につき 1 文書の UTF-8 ファイルを指定します。結合規則は学習用テキストから学びます。
 
 ```sh
-ruby examples/pretrain.rb
-ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+tensorruby run pretrain
+tensorruby run pretrain --train train.txt --validation validation.txt --epochs 12
 ```
 
 ## チェックポイントから追加学習して生成
@@ -127,9 +125,9 @@ ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs
 事前学習では複数の系列の勾配をトークン数で重み付けして累積し、勾配ノルムをクリップします。学習率はウォームアップ後にコサイン減衰させます。JSON に設定、重み、結合規則を保存し、アシスタントのトークンだけを追加学習します。
 
 ```sh
-ruby examples/pretrain.rb --save pretrained.json
-ruby examples/finetune.rb --save chat-model.json pretrained.json
-ruby examples/generate.rb --chat chat-model.json "하늘?"
+tensorruby run pretrain --save pretrained.json
+tensorruby run finetune --save chat-model.json pretrained.json
+tensorruby run generate --chat chat-model.json "하늘?"
 ```
 
 ## 今後の拡張

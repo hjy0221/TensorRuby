@@ -22,17 +22,13 @@ loss_fn = nn::CrossEntropyLoss.new
 optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.03)
 target = TensorRuby.tensor(labels)
 
-model.eval
-initial_loss = TensorRuby.no_grad { loss_fn.call(model.call(x), target).data }
-model.train
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: loss_fn, weight: ->(targets) { targets.size }
+)
+training_data = [[x, target]]
+initial_loss = trainer.evaluate(training_data)
 loader = TensorRuby::Data::DataLoader.new(x.to_a.zip(labels), batch_size: 8, random: random)
-40.times do
-  loader.each do |inputs, targets|
-    optimizer.zero_grad
-    loss_fn.call(model.call(inputs), targets).backward
-    optimizer.step
-  end
-end
+40.times { trainer.train_epoch(loader) }
 
 model.eval
 final_loss, predictions = TensorRuby.no_grad do

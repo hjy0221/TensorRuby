@@ -41,46 +41,28 @@ abort 'training and validation both need at least one next-token pair' if train_
 random = Random.new(42)
 model = TensorRuby::NN::GPT.new(vocab_size: vocabulary.size, context_size: context, features: 8,
                                heads: 2, layers: 1, random: random)
-criterion = TensorRuby::NN::CrossEntropyLoss.new
-parameters = model.parameters
-optimizer = TensorRuby::Optim::Adam.new(parameters)
-validation_loss = lambda do
-  TensorRuby.no_grad do
-    total = validation_pairs.sum do |input, targets|
-      criterion.call(model.call(input), targets).data * targets.size
-    end
-    total / validation_pairs.sum { |_, targets| targets.size }
-  end
-end
+optimizer = TensorRuby::Optim::Adam.new(model.parameters)
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: TensorRuby::NN::CrossEntropyLoss.new,
+  weight: ->(targets) { targets.size }, max_grad_norm: 1.0
+)
 
-model.eval
-before = validation_loss.call
-model.train
 batch_size = options[:batch_size]
 updates = options[:epochs] * ((train_pairs.size + batch_size - 1) / batch_size)
 warmup = [updates / 10, 10].min
-step = 0
-options[:epochs].times do
-  train_pairs.shuffle(random: random).each_slice(batch_size) do |batch|
-    optimizer.zero_grad
-    total_tokens = batch.sum { |_, targets| targets.size }
-    batch.each do |input, targets|
-      loss = criterion.call(model.call(input), targets)
-      loss.backward(targets.size.fdiv(total_tokens))
-    end
-    TensorRuby::Optim.clip_grad_norm(parameters, 1.0)
-    lr = if step < warmup
-           0.025 * (step + 1).fdiv(warmup)
-         else
-           progress = (step - warmup).fdiv([updates - warmup - 1, 1].max)
-           0.005 + 0.01 * (1 + Math.cos(Math::PI * progress))
-         end
-    optimizer.step(lr: lr)
-    step += 1
+schedule = lambda do |step|
+  if step < warmup
+    0.025 * (step + 1).fdiv(warmup)
+  else
+    progress = (step - warmup).fdiv([updates - warmup - 1, 1].max)
+    0.005 + 0.01 * (1 + Math.cos(Math::PI * progress))
   end
 end
-model.eval
-after = validation_loss.call
+before = trainer.evaluate(validation_pairs)
+options[:epochs].times do
+  trainer.train_epoch(train_pairs.shuffle(random: random), accumulation_steps: batch_size, learning_rate: schedule)
+end
+after = trainer.evaluate(validation_pairs)
 puts "Vocabulary: #{vocabulary.size} tokens (#{tokenizer.merges.size} learned merges)"
 puts format('Held-out next-token loss: %.4f -> %.4f', before, after)
 abort 'Training produced nonfinite loss' unless after.finite?

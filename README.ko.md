@@ -13,11 +13,33 @@ curl -fL https://github.com/hjy0221/TensorRuby/releases/latest/download/tensorru
 gem install --local tensorruby.gem
 ```
 
+## 직접 모델 학습하기
+
+gem을 설치하면 어느 폴더에서든 예제 목록을 보고 실행할 수 있습니다. Ruby 코드에서는 `require "tensorruby"`로 불러옵니다. Trainer에는 `[입력, 정답]` 쌍을 전달하며, 각 쌍에 텐서 배치 전체를 담을 수 있습니다.
+
+```sh
+tensorruby examples
+tensorruby run xor
+```
+
+```ruby
+require 'tensorruby'
+
+model = TensorRuby::NN::Linear.new(1, 1)
+optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.05)
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: TensorRuby::NN::MSELoss.new
+)
+data = [[TensorRuby.tensor([[0], [1], [2]]), TensorRuby.tensor([[1], [3], [5]])]]
+200.times { trainer.train_epoch(data) }
+p model.call([[3]]).to_a
+```
+
 ## 실행
 
 ```sh
 ruby -Ilib test/tensorruby_test.rb
-ruby examples/regression.rb
+ruby bin/tensorruby run regression
 gem build tensorruby.gemspec
 ```
 
@@ -43,35 +65,11 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 ## XOR 모델 학습
 
-`TensorRuby.tensor`로 텐서를 만들고 `NN::Sequential`로 층을 연결합니다. 전체 예제는 `ruby examples/xor.rb`로 실행할 수 있습니다.
-
-```ruby
-require 'tensorruby'
-
-nn = TensorRuby::NN
-random = Random.new(42)
-x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = TensorRuby.tensor([[0], [1], [1], [0]])
-
-model = nn::Sequential.new(
-  nn::Linear.new(2, 8, random: random),
-  nn::ReLU.new,
-  nn::Linear.new(8, 1, random: random)
-)
-criterion = nn::MSELoss.new
-optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
-
-500.times do
-  optimizer.zero_grad
-  loss = criterion.call(model.call(x), target)
-  loss.backward
-  optimizer.step
-end
-```
+`TensorRuby.tensor`로 텐서를 만들고 `NN::Sequential`로 층을 연결합니다. 전체 예제는 `tensorruby run xor`로 실행할 수 있습니다.
 
 ## 다중 클래스 분류
 
-`NN::CrossEntropyLoss`에는 `[batch, classes]` 형태의 로짓과 `[batch]` 형태의 정수 클래스 인덱스를 전달합니다. `Optim::Adam`은 학습 단계 사이에 모멘트를 유지합니다. `ruby examples/classification.rb`로 3개 클래스를 분류하는 예제를 실행할 수 있습니다.
+`NN::CrossEntropyLoss`에는 `[batch, classes]` 형태의 로짓과 `[batch]` 형태의 정수 클래스 인덱스를 전달합니다. `Optim::Adam`은 학습 단계 사이에 모멘트를 유지합니다. `tensorruby run classification`로 3개 클래스를 분류하는 예제를 실행할 수 있습니다.
 
 `Data::DataLoader.new(samples, batch_size: 8)`은 `[입력, 정답]` 쌍을 미니배치로 묶고 에포크마다 섞습니다.
 
@@ -89,10 +87,10 @@ predictions = TensorRuby.no_grad { model.call(x).to_a }
 GPT-2 형태의 디코더는 정수 토큰 ID를 받아 다음 토큰을 예측하도록 학습합니다. 학습 가능한 토큰·위치 임베딩, causal 멀티헤드 어텐션, 사전 레이어 정규화, GELU, 임베딩과 출력 가중치 공유를 지원합니다. 확산 예제는 합성 점과 흑백 줄무늬를 학습하며, 이미지 예제는 생성한 6×6 이미지 8장을 PNG로 저장합니다.
 
 ```sh
-ruby examples/gpt.rb
-ruby examples/transformer.rb
-ruby examples/diffusion.rb
-ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
+tensorruby run gpt
+tensorruby run transformer
+tensorruby run diffusion
+tensorruby run image_diffusion diffusion-samples.png diffusion-trajectory.png
 ```
 
 ## 대화 모델과 몬스터 스프라이트
@@ -100,8 +98,8 @@ ruby examples/image_diffusion.rb diffusion-samples.png diffusion-trajectory.png
 기본 한국어·일본어·영어 대화로 작은 모델을 학습하거나 `--data FILE`에 `[사용자, 어시스턴트]` 쌍으로 이루어진 대화 배열을 JSON으로 전달할 수 있습니다. 공백으로 나눈 학습 어휘를 사용합니다. 스프라이트는 고정 실루엣에 확산 모델이 생성한 색과 눈 색 변형을 적용합니다.
 
 ```sh
-ruby examples/chat.rb --interactive
-ruby examples/monster_diffusion.rb all monster-sprites.png
+tensorruby run chat --interactive
+tensorruby run monster_diffusion all monster-sprites.png
 ```
 
 ## 다국어 수도 모델 학습과 불러오기
@@ -109,8 +107,8 @@ ruby examples/monster_diffusion.rb all monster-sprites.png
 12개 나라의 수도를 세 언어로 처음부터 학습하고, 저장한 가중치를 재학습 없이 불러올 수 있습니다. 학습에 쓴 질문과 같은 단어를 재배열한 질문의 정답률을 각각 표시합니다.
 
 ```sh
-ruby examples/capital_chat.rb --save capital-chat-weights.json
-ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
+tensorruby run capital_chat --save capital-chat-weights.json
+tensorruby run capital_chat --load capital-chat-weights.json --interactive
 ```
 
 ## 원문으로 사전학습
@@ -118,8 +116,8 @@ ruby examples/capital_chat.rb --load capital-chat-weights.json --interactive
 바이트 페어 토크나이저와 작은 GPT를 처음부터 학습합니다. 유효한 UTF-8 텍스트를 토큰화할 수 있습니다. 한 줄에 문서 하나를 담은 UTF-8 학습·검증 파일을 각각 전달하세요. 토큰 병합 규칙은 학습 텍스트에서만 배웁니다.
 
 ```sh
-ruby examples/pretrain.rb
-ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs 12
+tensorruby run pretrain
+tensorruby run pretrain --train train.txt --validation validation.txt --epochs 12
 ```
 
 ## 체크포인트 미세조정과 텍스트 생성
@@ -127,9 +125,9 @@ ruby examples/pretrain.rb --train train.txt --validation validation.txt --epochs
 사전학습은 여러 시퀀스의 기울기를 토큰 수에 비례해 누적하고 전체 기울기 노름을 제한합니다. 학습률은 워밍업 뒤 코사인 형태로 줄입니다. 설정·가중치·병합 규칙은 JSON으로 저장하며, 미세조정의 손실에는 어시스턴트 토큰만 포함합니다.
 
 ```sh
-ruby examples/pretrain.rb --save pretrained.json
-ruby examples/finetune.rb --save chat-model.json pretrained.json
-ruby examples/generate.rb --chat chat-model.json "하늘?"
+tensorruby run pretrain --save pretrained.json
+tensorruby run finetune --save chat-model.json pretrained.json
+tensorruby run generate --chat chat-model.json "하늘?"
 ```
 
 ## 확장 방향

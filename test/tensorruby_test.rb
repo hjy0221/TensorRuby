@@ -245,6 +245,25 @@ class TensorRubyTest < Minitest::Test
     assert_in_delta 1.6, right.grad, 1e-12
   end
 
+  def test_trainer_weights_and_accumulates_batches_before_one_update
+    model = NN::Linear.new(1, 1, random: Random.new(1))
+    model.parameters.each { |parameter| parameter.data = 0.0 }
+    optimizer = Optim::SGD.new(model.parameters, lr: 0.1)
+    trainer = Training::Trainer.new(
+      model, optimizer: optimizer, loss: NN::MSELoss.new, weight: ->(target) { target.first.first }
+    )
+    data = [[[[1]], [[1]]], [[[1]], [[3]]], [[[1]], [[0]]]]
+
+    assert_in_delta 7.0, trainer.evaluate(data), 1e-12
+    assert model.training?
+    assert_in_delta 7.0, trainer.train_epoch(data, accumulation_steps: 2), 1e-12
+    assert_equal 1, trainer.steps
+    model.parameters.each { |parameter| assert_in_delta 0.5, parameter.data, 1e-12 }
+    model.eval
+    assert_in_delta 3.0, trainer.evaluate(data), 1e-12
+    refute model.training?
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

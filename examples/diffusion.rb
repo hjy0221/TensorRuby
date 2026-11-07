@@ -28,23 +28,20 @@ make_batch = lambda do
   [schedule.add_noise(clean, noise, step), noise, step]
 end
 
-validation = Array.new(12) { make_batch.call }
-validation_loss = lambda do
-  TensorRuby.no_grad do
-    validation.sum { |noisy, noise, step| loss_fn.call(predict_noise.call(noisy, step), noise).data } / validation.size
-  end
-end
-initial = validation_loss.call
-500.times do
+# A training example carries the noisy input and its timestep together.
+example = lambda do
   noisy, noise, step = make_batch.call
-  optimizer.zero_grad
-  loss_fn.call(predict_noise.call(noisy, step), noise).backward
-  optimizer.step
+  [[noisy, step], noise]
 end
-
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: loss_fn, forward: ->(input) { predict_noise.call(*input) }
+)
+validation = Array.new(12) { example.call }
+initial_loss = trainer.evaluate(validation)
+500.times { trainer.train_epoch([example.call]) }
+final_loss = trainer.evaluate(validation)
 model.eval
-final = validation_loss.call
 points = schedule.sample([8, 2], random: random, &predict_noise).to_a
-puts format('Held-out noise MSE: %.4f -> %.4f', initial, final)
+puts format('Held-out noise MSE: %.4f -> %.4f', initial_loss, final_loss)
 puts "Generated points: #{points.map { |point| point.map { |value| value.round(2) } }.inspect}"
-abort 'Diffusion training failed' unless final < initial && points.flatten.all?(&:finite?)
+abort 'Diffusion training failed' unless final_loss < initial_loss && points.flatten.all?(&:finite?)

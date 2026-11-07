@@ -9,6 +9,7 @@ require_relative 'tensorruby/text'
 require_relative 'tensorruby/diffusion'
 require_relative 'tensorruby/optim'
 require_relative 'tensorruby/data_loader'
+require_relative 'tensorruby/training'
 
 module TensorRuby
   def self.no_grad

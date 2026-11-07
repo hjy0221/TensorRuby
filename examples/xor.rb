@@ -3,26 +3,24 @@ require 'tensorruby'
 
 nn = TensorRuby::NN
 random = Random.new(42)
-x = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
-target = TensorRuby.tensor([[0], [1], [1], [0]])
-
+inputs = TensorRuby.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+labels = [0, 1, 1, 0]
+data = [[inputs, labels]]
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
   nn::ReLU.new,
-  nn::Linear.new(8, 1, random: random)
+  nn::Linear.new(8, 2, random: random)
 )
-criterion = nn::MSELoss.new
-optimizer = TensorRuby::Optim::SGD.new(model.parameters, lr: 0.1)
+optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.04)
+trainer = TensorRuby::Training::Trainer.new(model, optimizer: optimizer, loss: nn::CrossEntropyLoss.new)
 
-500.times do
-  optimizer.zero_grad
-  loss = criterion.call(model.call(x), target)
-  loss.backward
-  optimizer.step
+before = trainer.evaluate(data)
+200.times { trainer.train_epoch(data) }
+after = trainer.evaluate(data)
+model.eval
+predictions = TensorRuby.no_grad do
+  model.call(inputs).to_a.map { |scores| scores.each_index.max_by { |i| scores[i] } }
 end
-
-output = model.call(x)
-predictions = output.to_a.flatten.map { |score| score >= 0.5 ? 1 : 0 }
-puts format('Final loss: %.8g', criterion.call(output, target).data)
-puts "Predictions: #{predictions.inspect}"
-abort 'XOR training failed' unless predictions == [0, 1, 1, 0]
+puts format('XOR cross entropy: %.6f → %.6f', before, after)
+puts "XOR predictions: #{predictions.inspect}"
+abort 'XOR training failed' unless predictions == labels

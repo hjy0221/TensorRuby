@@ -24,23 +24,17 @@ if examples.empty? || examples.any? { |input, _| input.size > context }
   abort "provide nonempty dialogues that fit the #{context}-token context"
 end
 
-criterion = TensorRuby::NN::CrossEntropyLoss.new(ignore_index: TensorRuby::Chat::Vocabulary::IGNORE)
+ignored = TensorRuby::Chat::Vocabulary::IGNORE
 optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.015)
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: TensorRuby::NN::CrossEntropyLoss.new(ignore_index: ignored),
+  weight: ->(targets) { targets.count { |token| token != ignored } }
+)
 random = Random.new(7)
-measure = lambda do
-  TensorRuby.no_grad { examples.sum { |input, targets| criterion.call(model.call(input), targets).data } / examples.size }
-end
-before = measure.call
-model.train
-options[:epochs].times do
-  examples.shuffle(random: random).each do |input, targets|
-    optimizer.zero_grad
-    criterion.call(model.call(input), targets).backward
-    optimizer.step
-  end
-end
+before = trainer.evaluate(examples)
+options[:epochs].times { trainer.train_epoch(examples.shuffle(random: random)) }
+after = trainer.evaluate(examples)
 model.eval
-after = measure.call
 puts format('Assistant-token training loss: %.4f -> %.4f', before, after)
 abort 'Training produced nonfinite loss' unless after.finite?
 session = TensorRuby::Chat::Session.new(model, vocabulary)

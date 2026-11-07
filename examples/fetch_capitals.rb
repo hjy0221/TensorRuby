@@ -36,6 +36,6 @@ facts = languages.to_h do |language|
   end
   [language, pairs]
 end
-path = ARGV.fetch(0, File.join(__dir__, 'data', 'capitals.json'))
+path = ARGV.fetch(0, 'capitals.json')
 File.write(path, JSON.pretty_generate(facts) + "\n")
 puts "Downloaded #{countries.size} facts in #{languages.size} languages to #{path}"

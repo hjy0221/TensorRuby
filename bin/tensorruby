@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+require_relative '../lib/tensorruby/version'
+require 'rbconfig'
+
+examples_dir = File.expand_path('../examples', __dir__)
+examples = Dir.glob(File.join(examples_dir, '*.rb')).sort.to_h do |path|
+  [File.basename(path, '.rb'), path]
+end
+
+case ARGV.shift
+when '--version', '-v'
+  puts TensorRuby::VERSION
+when 'examples'
+  puts examples.keys
+when 'run'
+  name = ARGV.shift
+  path = examples[name]
+  abort "Unknown example: #{name.inspect}. Run 'tensorruby examples'." unless path
+
+  exec(RbConfig.ruby, path, *ARGV)
+when nil, '--help', '-h'
+  puts 'Usage: tensorruby examples | tensorruby run EXAMPLE [ARGS] | tensorruby --version'
+else
+  abort "Unknown command. Run 'tensorruby --help'."
+end

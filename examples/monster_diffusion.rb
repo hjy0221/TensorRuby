@@ -33,22 +33,20 @@ batch = lambda do
   [schedule.add_noise(clean, noise, step), noise, step, labels]
 end
 
-validation = Array.new(10) { batch.call }
-measure = lambda do
-  TensorRuby.no_grad do
-    validation.sum { |x, noise, step, labels| loss.call(predict.call(x, step, labels), noise).data } / validation.size
-  end
-end
-initial = measure.call
-300.times do
+# A training example carries the noisy input and its timestep together.
+example = lambda do
   noisy, noise, step, labels = batch.call
-  optimizer.zero_grad
-  loss.call(predict.call(noisy, step, labels), noise).backward
-  optimizer.step
+  [[noisy, step, labels], noise]
 end
+trainer = TensorRuby::Training::Trainer.new(
+  model, optimizer: optimizer, loss: loss, forward: ->(input) { predict.call(*input) }
+)
+validation = Array.new(10) { example.call }
+initial_loss = trainer.evaluate(validation)
+300.times { trainer.train_epoch([example.call]) }
+final_loss = trainer.evaluate(validation)
 model.eval
-final = measure.call
-abort 'Noise predictor did not improve' unless final.finite? && final < initial
+abort 'Noise predictor did not improve' unless final_loss.finite? && final_loss < initial_loss
 
 labels = requested == 'all' ? [0, 1, 2, 0, 1, 2] : Array.new(4, species.index(requested))
 attributes = schedule.sample([labels.size, 3], random: random) { |noisy, step| predict.call(noisy, step, labels) }.to_a
@@ -155,5 +153,5 @@ png << chunk.call('IHDR', [width, height, 8, 2, 0, 0, 0].pack('NNC5'))
 png << chunk.call('IDAT', Zlib.deflate(scanlines))
 png << chunk.call('IEND', ''.b)
 File.binwrite(path, png)
-puts format('Held-out attribute noise MSE: %.4f -> %.4f', initial, final)
+puts format('Held-out attribute noise MSE: %.4f -> %.4f', initial_loss, final_loss)
 puts "Generated #{tiles.size} monster sprites: #{path}"

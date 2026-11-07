@@ -39,13 +39,9 @@ model = nn::GPT.new(vocab_size: vocabulary.size, context_size: context, features
                     heads: 4, layers: 1, random: random)
 optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.015)
 criterion = nn::CrossEntropyLoss.new(ignore_index: chat::Vocabulary::IGNORE)
-
+trainer = TensorRuby::Training::Trainer.new(model, optimizer: optimizer, loss: criterion)
 options[:epochs].times do |epoch|
-  examples.shuffle(random: random).each do |input, target|
-    optimizer.zero_grad
-    criterion.call(model.call(input), target).backward
-    optimizer.step
-  end
+  trainer.train_epoch(examples.shuffle(random: random))
   puts "Training epoch #{epoch + 1}/#{options[:epochs]}" if ((epoch + 1) % 20).zero?
 end
 
