@@ -17,11 +17,11 @@ dialogues = [
   [['오늘 뭐 할까?', '산책을 해봐요.'], ['준비물은?', '편한 신발을 챙겨요.']],
   [['오늘 뭐 만들까?', '커피를 내려봐요.'], ['준비물은?', '원두와 물을 챙겨요.']],
   [['안녕', '반가워요!'], ['이름이 뭐야?', '저는 텐서루비예요.']],
-  [['散歩に行こうかな', 'いいですね。'], ['何を用意する？', '歩きやすい靴を履きましょう。']],
-  [['コーヒーを淹れようかな', 'いいですね。'], ['何を用意する？', '豆と水を用意しましょう。']],
+  [['散歩に行こうかな', '散歩しましょう。'], ['何を用意する？', '歩きやすい靴を履きましょう。']],
+  [['コーヒーを淹れようかな', 'コーヒーを淹れましょう。'], ['何を用意する？', '豆と水を用意しましょう。']],
   [['こんにちは', 'はじめまして！'], ['名前は？', 'テンソルルビーです。']],
-  [['I want to go for a walk', 'That sounds nice.'], ['What should I bring?', 'Wear comfortable shoes.']],
-  [['I want to make coffee', 'That sounds nice.'], ['What should I bring?', 'Bring coffee beans and water.']],
+  [['I want to go for a walk', 'Let us take a walk.'], ['What should I bring?', 'Wear comfortable shoes.']],
+  [['I want to make coffee', 'Let us brew coffee.'], ['What should I bring?', 'Bring coffee beans and water.']],
   [['Hello', 'Nice to meet you!'], ['What is your name?', 'I am TensorRuby.']]
 ]
 dialogues = JSON.parse(File.read(options[:data])) if options[:data]
@@ -40,12 +40,13 @@ model = nn::GPT.new(vocab_size: vocabulary.size, context_size: context, features
 optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.015)
 criterion = nn::CrossEntropyLoss.new(ignore_index: chat::Vocabulary::IGNORE)
 
-options[:epochs].times do
+options[:epochs].times do |epoch|
   examples.shuffle(random: random).each do |input, target|
     optimizer.zero_grad
     criterion.call(model.call(input), target).backward
     optimizer.step
   end
+  puts "Training epoch #{epoch + 1}/#{options[:epochs]}" if ((epoch + 1) % 20).zero?
 end
 
 session = chat::Session.new(model.eval, vocabulary)
