@@ -32,6 +32,34 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 `Tensor` は `Value` を行優先順で連続領域に格納し、形状とストライドを保持します。要素ごとの `+`、`-`、`*`、`/` は末尾の軸を基準にブロードキャストします。`matmul` は 2 次元行列に対応します。`sum` と `mean` は全要素を集約して `Value` を返します。`Linear` の入力形状は `[batch, features]` です。MSE では予測値と正解値の形状が一致している必要があります。現行 API は各軸の長さが正のテンソルと全要素の集約に対応します。
 
+## XOR モデルの学習
+
+`Rubygrad.tensor` でテンソルを作り、`NN::Sequential` で層を組み合わせます。サンプル全体は `ruby examples/xor.rb` で実行できます。
+
+```ruby
+require 'rubygrad'
+
+nn = Rubygrad::NN
+random = Random.new(42)
+x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = Rubygrad.tensor([[0], [1], [1], [0]])
+
+model = nn::Sequential.new(
+  nn::Linear.new(2, 8, random: random),
+  nn::ReLU.new,
+  nn::Linear.new(8, 1, random: random)
+)
+criterion = nn::MSELoss.new
+optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+
+500.times do
+  optimizer.zero_grad
+  loss = criterion.call(model.call(x), target)
+  loss.backward
+  optimizer.step
+end
+```
+
 ## 今後の拡張
 
 現在のスカラー計算グラフは演算の正しさを検証しやすい一方、大規模なモデルでは計算時間とメモリ使用量が増えます。将来は形状とストライドの情報からストレージと演算カーネルを分離し、テンソル単位のベクトル・ヤコビアン積を導入することで、Rust/C++ による CPU バックエンドや GPU バックエンドに接続できます。

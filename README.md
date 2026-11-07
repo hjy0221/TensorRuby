@@ -32,6 +32,34 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 `Tensor` stores `Value` elements in contiguous row-major order with shape and stride metadata. Elementwise `+`, `-`, `*`, and `/` broadcast across trailing axes. `matmul` accepts rank-2 matrices. `sum` and `mean` reduce all elements to a `Value`. `Linear` expects input shaped `[batch, features]`, and MSE requires identical prediction and target shapes. The current API supports nonempty dimensions and whole-tensor reductions.
 
+## Train an XOR model
+
+Create tensors with `Rubygrad.tensor` and compose layers with `NN::Sequential`. Run the complete example with `ruby examples/xor.rb`.
+
+```ruby
+require 'rubygrad'
+
+nn = Rubygrad::NN
+random = Random.new(42)
+x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = Rubygrad.tensor([[0], [1], [1], [0]])
+
+model = nn::Sequential.new(
+  nn::Linear.new(2, 8, random: random),
+  nn::ReLU.new,
+  nn::Linear.new(8, 1, random: random)
+)
+criterion = nn::MSELoss.new
+optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+
+500.times do
+  optimizer.zero_grad
+  loss = criterion.call(model.call(x), target)
+  loss.backward
+  optimizer.step
+end
+```
+
 ## Backend roadmap
 
 The scalar graph makes the current engine easy to check, but uses substantial time and memory for large models. A future backend interface could separate storage and kernels from shape and stride metadata. Tensor-level vector–Jacobian products could then support Rust/C++ CPU or GPU backends.

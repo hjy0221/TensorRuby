@@ -16,6 +16,20 @@ module Rubygrad
       end
       def zero_grad; parameters.each(&:zero_grad); self; end
     end
+    class Sequential < Module
+      def initialize(*layers)
+        unless layers.all? { |layer| layer.is_a?(Module) && layer.respond_to?(:call) }
+          raise ArgumentError, 'layers must be callable NN::Module instances'
+        end
+
+        @layers = layers.freeze
+      end
+
+      def call(input)
+        @layers.reduce(input) { |output, layer| layer.call(output) }
+      end
+    end
+
     class Linear < Module
       attr_reader :weight, :bias
       def initialize(in_features, out_features, random: Random.new)

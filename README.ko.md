@@ -30,6 +30,34 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 `Tensor`는 연속된 row-major 저장소와 shape/stride를 가지며 각 원소가 `Value`입니다. 원소별 `+`, `-`, `*`, `/`는 뒤쪽 축 기준 broadcasting을 지원합니다. `matmul`은 현재 2차원 행렬만 지원하며, `sum`과 `mean`은 전체 원소를 축소해 `Value`를 반환합니다. 빈 차원, 텐서 뷰, 배치 matmul, 축별 축소, dtype 및 장치 선택은 아직 지원하지 않습니다. `Linear` 입력은 `[batch, features]` 형태입니다. MSE는 예측과 정답의 shape가 정확히 일치해야 합니다.
 
+## XOR 모델 학습
+
+`Rubygrad.tensor`로 텐서를 만들고 `NN::Sequential`로 층을 연결합니다. 전체 예제는 `ruby examples/xor.rb`로 실행할 수 있습니다.
+
+```ruby
+require 'rubygrad'
+
+nn = Rubygrad::NN
+random = Random.new(42)
+x = Rubygrad.tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = Rubygrad.tensor([[0], [1], [1], [0]])
+
+model = nn::Sequential.new(
+  nn::Linear.new(2, 8, random: random),
+  nn::ReLU.new,
+  nn::Linear.new(8, 1, random: random)
+)
+criterion = nn::MSELoss.new
+optimizer = Rubygrad::Optim::SGD.new(model.parameters, lr: 0.1)
+
+500.times do
+  optimizer.zero_grad
+  loss = criterion.call(model.call(x), target)
+  loss.backward
+  optimizer.step
+end
+```
+
 ## 확장 방향
 
 현재 텐서 구현은 정확성 검증을 위한 스칼라 그래프 방식이므로 큰 모델에는 느리고 메모리 사용량이 큽니다. 향후 shape/stride 메타데이터와 연산 API를 유지하면서 저장소와 커널을 백엔드 인터페이스로 분리하고, 텐서 단위 VJP를 도입해 Rust/C++ CPU 또는 GPU 백엔드를 연결할 수 있습니다. 현재 이러한 백엔드나 연결 코드는 포함하지 않습니다.
