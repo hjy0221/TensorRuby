@@ -73,7 +73,7 @@ end
 
 Use `NN::CrossEntropyLoss` with raw logits shaped `[batch, classes]` and integer class indices shaped `[batch]`. `Optim::Adam` keeps its running moments across training steps. Run the three-class example with `ruby examples/classification.rb`.
 
-`Data::DataLoader.new(samples, batch_size: 8)` groups `[input, target]` pairs into tensor mini-batches and shuffles them each epoch. The classification example follows the dataset and loader separation in [DeZero](https://github.com/WegraLee/deep-learning-from-scratch-3).
+`Data::DataLoader.new(samples, batch_size: 8)` groups `[input, target]` pairs into tensor mini-batches and shuffles them each epoch.
 
 ## Backend roadmap
 

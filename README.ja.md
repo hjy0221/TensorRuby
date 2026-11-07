@@ -73,7 +73,7 @@ end
 
 `NN::CrossEntropyLoss` に形状が `[batch, classes]` のロジットと、形状が `[batch]` の整数クラス番号を渡します。`Optim::Adam` は学習ステップ間でモーメントを保持します。3 クラスの例は `ruby examples/classification.rb` で実行できます。
 
-`Data::DataLoader.new(samples, batch_size: 8)` は `[入力, 正解]` の組をミニバッチにまとめ、エポックごとにシャッフルします。分類サンプルのデータセットとローダーの分離は [DeZero](https://github.com/WegraLee/deep-learning-from-scratch-3) を参考にしています。
+`Data::DataLoader.new(samples, batch_size: 8)` は `[入力, 正解]` の組をミニバッチにまとめ、エポックごとにシャッフルします。
 
 ## 今後の拡張
 
