@@ -1,6 +1,50 @@
 module TensorRuby
   module NN
     class Module
+      def training?
+        @training != false
+      end
+
+      def train(mode = true)
+        unless mode == true || mode == false
+          raise ArgumentError, 'training mode must be true or false'
+        end
+
+        set_training_mode(mode, {}.compare_by_identity)
+        self
+      end
+
+      def eval
+        train(false)
+      end
+
+      protected
+
+      def set_training_mode(mode, visited)
+        return if visited[self]
+
+        visited[self] = true
+        @training = mode
+        instance_variables.each { |name| update_child_mode(instance_variable_get(name), mode, visited) }
+      end
+
+      private
+
+      def update_child_mode(child, mode, visited)
+        case child
+        when Module
+          child.set_training_mode(mode, visited)
+        when Array, Hash
+          return if visited[child]
+
+          visited[child] = true
+          items = child.is_a?(Hash) ? child.values : child
+          items.each { |item| update_child_mode(item, mode, visited) }
+        end
+      end
+
+      public
+
       def parameters
         collect = lambda do |obj|
           case obj
@@ -43,6 +87,26 @@ module TensorRuby
     class ReLU < Module
       def call(input); Tensor.wrap(input).relu; end
     end
+    class Dropout < Module
+      def initialize(p = 0.5, random: Random.new)
+        unless p.is_a?(Numeric) && p.real? && p >= 0 && p < 1
+          raise ArgumentError, 'dropout probability must be in [0, 1)'
+        end
+
+        @p = p.to_f
+        @random = random
+      end
+
+      def call(input)
+        input = Tensor.wrap(input)
+        return input unless training? && @p.positive?
+
+        scale = 1.0 / (1.0 - @p)
+        mask = Array.new(input.size) { @random.rand < @p ? 0.0 : scale }
+        input * Tensor.new(mask, shape: input.shape)
+      end
+    end
+
     # Mean cross entropy for [batch, classes] logits and class indices.
     class CrossEntropyLoss < Module
       def call(logits, target)

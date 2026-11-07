@@ -4,6 +4,10 @@ module TensorRuby
     attr_reader :parents
     def initialize(data, parents: [], tensor_bridge: false, &backward)
       raise TypeError, 'data must be numeric' unless data.is_a?(Numeric)
+      unless tensor_bridge || TensorRuby.grad_enabled?
+        parents = []
+        backward = nil
+      end
       @data, @grad, @parents = data.to_f, 0.0, parents.freeze
       @backward = backward || ->(_g) {}
       @tensor_bridge = tensor_bridge

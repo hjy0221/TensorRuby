@@ -75,6 +75,15 @@ end
 
 `Data::DataLoader.new(samples, batch_size: 8)` は `[入力, 正解]` の組をミニバッチにまとめ、エポックごとにシャッフルします。
 
+## 学習と評価
+
+`model.train` でドロップアウトを有効にし、`model.eval` でモデルと子レイヤーのドロップアウトを無効にします。推論を `TensorRuby.no_grad` で囲むと、逆伝播用の演算記録を省略できます。
+
+```ruby
+model.eval
+predictions = TensorRuby.no_grad { model.call(x).to_a }
+```
+
 ## 今後の拡張
 
 テンソル演算ごとにグラフのノードを一つ作り、ベクトル・ヤコビアン積を計算します。`output.backward(seed)` には出力と同じ形状の勾配を渡します。出力が 1 要素なら省略できます。CPU カーネルは現在 Ruby で動作し、将来はネイティブ実装に置き換えられます。

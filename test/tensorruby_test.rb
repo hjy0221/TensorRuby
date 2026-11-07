@@ -102,6 +102,40 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { Data::DataLoader.new(data, batch_size: 0) }
   end
 
+  def test_eval_propagates_to_dropout_and_training_uses_scaled_mask
+    dropout = NN::Dropout.new(0.5, random: Random.new(42))
+    model = NN::Sequential.new(NN::Sequential.new(dropout))
+    x = Tensor.new([1, 1, 1, 1])
+
+    model.eval
+    refute dropout.training?
+    assert_same x, model.call(x)
+
+    model.train
+    output = model.call(x)
+    assert_equal [0.0, 2.0, 2.0, 2.0], output.to_a
+    output.sum.backward
+    assert_equal output.to_a, x.values.map(&:grad)
+  end
+
+  def test_no_grad_detaches_new_operations_and_restores_scope
+    x = Tensor.new([2, 3])
+    scalar = x[0]
+    detached = TensorRuby.no_grad do
+      TensorRuby.no_grad { refute TensorRuby.grad_enabled? }
+      refute TensorRuby.grad_enabled?
+      assert_empty((scalar * scalar).parents)
+      x * x
+    end
+    detached.sum.backward
+    assert_equal [0.0, 0.0], x.values.map(&:grad)
+    assert_raises(RuntimeError) { TensorRuby.no_grad { raise 'failure' } }
+    assert TensorRuby.grad_enabled?
+    tracked = x * x
+    TensorRuby.no_grad { tracked.backward([1, 1]) }
+    assert_equal [4.0, 6.0], x.values.map(&:grad)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

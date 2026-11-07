@@ -14,7 +14,7 @@ module TensorRuby
 
       def propagate(pass)
         gradient = pass.delete(self)
-        @pullback.call(gradient, pass) if gradient
+        @pullback.call(gradient, pass) if gradient && @pullback
       end
     end
     private_constant :Node
@@ -109,10 +109,9 @@ module TensorRuby
     def reduce_with_gradient(value, gradient)
       raise ArgumentError, 'gradient length must match tensor size' unless gradient.size == size
 
-      weights = gradient.dup.freeze
-      Value.new(value, parents: [@node], tensor_bridge: true) do |upstream, pass|
-        weights.each_with_index { |weight, i| @node.accumulate(pass, i, upstream * weight) }
-      end
+      return Value.new(value) unless TensorRuby.grad_enabled?
+
+      scalar_bridge(value, gradient)
     end
 
     def backward(seed = nil)
@@ -126,7 +125,7 @@ module TensorRuby
 
         weights = seed.flat_data
       end
-      reduce_with_gradient(0.0, weights).backward
+      scalar_bridge(0.0, weights).backward
       self
     end
 
@@ -171,6 +170,13 @@ module TensorRuby
     end
 
     private
+
+    def scalar_bridge(value, gradient)
+      weights = gradient.dup.freeze
+      Value.new(value, parents: [@node], tensor_bridge: true) do |upstream, pass|
+        weights.each_with_index { |weight, i| @node.accumulate(pass, i, upstream * weight) }
+      end
+    end
 
     def elementwise(other, operator)
       other = Tensor.wrap(other)
@@ -217,7 +223,11 @@ module TensorRuby
 
     def operation(shape, data, parents, &pullback)
       result = Tensor.allocate
-      result.initialize_operation(shape, data, parents, &pullback)
+      if TensorRuby.grad_enabled?
+        result.initialize_operation(shape, data, parents, &pullback)
+      else
+        result.initialize_operation(shape, data, [])
+      end
       result
     end
 
@@ -228,7 +238,7 @@ module TensorRuby
       @node = Node.new(size, parents) do |gradient, pass|
         @last_gradient = gradient
         @values.each_with_index { |value, i| value.grad = gradient[i] if value }
-        pullback.call(gradient, pass)
+        pullback.call(gradient, pass) if pullback
       end
     end
 

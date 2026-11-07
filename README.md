@@ -75,6 +75,15 @@ Use `NN::CrossEntropyLoss` with raw logits shaped `[batch, classes]` and integer
 
 `Data::DataLoader.new(samples, batch_size: 8)` groups `[input, target]` pairs into tensor mini-batches and shuffles them each epoch.
 
+## Training and evaluation
+
+Use `model.train` to enable dropout and `model.eval` to disable it in the model and its nested layers. Wrap inference in `TensorRuby.no_grad` to skip recording new operations for backpropagation.
+
+```ruby
+model.eval
+predictions = TensorRuby.no_grad { model.call(x).to_a }
+```
+
 ## Backend roadmap
 
 Each tensor operation records one node with a vector–Jacobian product. Use `output.backward(seed)` with a seed of the same shape, or omit the seed for a single-element output. The CPU kernels currently run in Ruby. A future backend can replace those kernels with native implementations.

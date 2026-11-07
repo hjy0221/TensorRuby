@@ -75,6 +75,15 @@ end
 
 `Data::DataLoader.new(samples, batch_size: 8)`은 `[입력, 정답]` 쌍을 미니배치로 묶고 에포크마다 섞습니다.
 
+## 학습과 평가
+
+`model.train`은 드롭아웃을 켜고, `model.eval`은 하위 층까지 드롭아웃을 끕니다. 추론을 `TensorRuby.no_grad`로 감싸면 새 연산을 역전파 그래프에 기록하지 않습니다.
+
+```ruby
+model.eval
+predictions = TensorRuby.no_grad { model.call(x).to_a }
+```
+
 ## 확장 방향
 
 텐서 연산 하나마다 그래프 노드 하나를 기록하고 벡터–야코비안 곱으로 역전파합니다. `output.backward(seed)`의 시드는 출력과 형태가 같아야 하며, 원소가 하나면 생략할 수 있습니다. 현재 CPU 커널은 Ruby로 실행되며, 향후 네이티브 구현으로 교체할 수 있습니다.

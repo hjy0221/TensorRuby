@@ -15,13 +15,16 @@ test_x, test_labels = sample.call(5)
 model = nn::Sequential.new(
   nn::Linear.new(2, 8, random: random),
   nn::ReLU.new,
+  nn::Dropout.new(0.15, random: random),
   nn::Linear.new(8, 3, random: random)
 )
 loss_fn = nn::CrossEntropyLoss.new
 optimizer = TensorRuby::Optim::Adam.new(model.parameters, lr: 0.03)
 target = TensorRuby.tensor(labels)
 
-initial_loss = loss_fn.call(model.call(x), target).data
+model.eval
+initial_loss = TensorRuby.no_grad { loss_fn.call(model.call(x), target).data }
+model.train
 loader = TensorRuby::Data::DataLoader.new(x.to_a.zip(labels), batch_size: 8, random: random)
 40.times do
   loader.each do |inputs, targets|
@@ -31,8 +34,12 @@ loader = TensorRuby::Data::DataLoader.new(x.to_a.zip(labels), batch_size: 8, ran
   end
 end
 
-final_loss = loss_fn.call(model.call(x), target).data
-predictions = model.call(test_x).to_a.map { |scores| scores.each_index.max_by { |i| scores[i] } }
+model.eval
+final_loss, predictions = TensorRuby.no_grad do
+  loss = loss_fn.call(model.call(x), target).data
+  classes = model.call(test_x).to_a.map { |scores| scores.each_index.max_by { |i| scores[i] } }
+  [loss, classes]
+end
 correct = predictions.zip(test_labels).count { |prediction, label| prediction == label }
 puts format('Training loss: %.6f -> %.6f', initial_loss, final_loss)
 puts "Held-out accuracy: #{correct}/#{test_labels.size}"
