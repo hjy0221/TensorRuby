@@ -1,6 +1,6 @@
 # rubygrad
 
-[한국어](README.md) · [English](README.en.md) · [日本語](README.ja.md)
+[English](README.en.md) · [日本語](README.ja.md) · [한국어](README.md)
 
 rubygrad is a small deep learning framework written in pure Ruby. It requires Ruby 2.7 or later and has no runtime dependencies.
 
