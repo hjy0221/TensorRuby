@@ -6,25 +6,9 @@
 
 Signatures use the `TensorRuby` namespace unless shown otherwise.
 
-## Tensors and autograd
+## Tensor and autograd
 
-`TensorRuby.tensor(data, shape: nil)`
-
-- Create a tensor from numeric data or nested arrays. Supply `shape:` to interpret flat data with an explicit layout.
-- `shape`, `strides`, `rank`, and `size` describe the tensor. `to_a` reads numeric values. `tensor[i, j]` and `values` expose scalar `Value` objects.
-- Elementwise `+`, `-`, `*`, and `/` broadcast trailing axes. `matmul(other)` multiplies the last two axes of rank-2 or higher inputs and broadcasts leading axes. `[2, 3, 4] × [4, 5]` yields `[2, 3, 5]`.
-- `sum` and `mean` reduce the entire tensor to a `Value`. `transpose`, `softmax(causal: false)`, `normalize_rows(eps: 1e-5)`, `gather_rows(indices)`, and `concat_columns(other)` operate on matrices.
-- `Value#backward(seed = 1.0)` accumulates leaf gradients. `Tensor#backward(seed)` accepts a seed of the same shape, and allows it to be omitted for one element. `TensorRuby.no_grad { … }` disables recording new operations.
-
-```ruby
-require 'tensorruby'
-
-x = TensorRuby.tensor([[1, 2], [3, 4]])
-w = TensorRuby.tensor([[2], [1]])
-loss = x.matmul(w).sum
-loss.backward
-p w.values.map(&:grad) # [4.0, 6.0]
-```
+[Tensor and autograd](tensor.md) — Shape rules, operation signatures, seeds, and gradient accumulation.
 
 ## Neural networks
 
@@ -37,7 +21,7 @@ p w.values.map(&:grad) # [4.0, 6.0]
 
 - `Data::DataLoader.new(dataset, batch_size:, shuffle: true, random: Random.new)` yields tensor pairs from an indexable dataset. The final partial batch is included.
 - `Optim::SGD.new(parameters, lr:)` and `Optim::Adam.new(parameters, lr: 0.001)` support `zero_grad` and `step`. Adam also accepts `step(lr:)`.
-- `Training::Trainer.new(model, optimizer:, loss:, weight: nil, max_grad_norm: nil, forward: nil)` consumes `[input, target]` pairs. `train_epoch(examples, accumulation_steps: 1, learning_rate: nil)` returns mean loss, and `evaluate(examples)` evaluates without recording gradients. A learning-rate callable receives the optimizer step, starting at zero.
+- [Trainer and mini-batches](trainer.md) — Weighted losses, partial batches, gradient accumulation, and evaluation.
 
 ## Text and generation
 

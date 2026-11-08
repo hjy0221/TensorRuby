@@ -8,23 +8,7 @@
 
 ## 텐서와 자동미분
 
-`TensorRuby.tensor(data, shape: nil)`
-
-- 수치나 중첩 배열에서 텐서를 만듭니다. 평평한 배열의 형태를 명시하려면 `shape:`를 전달합니다.
-- `shape`, `strides`, `rank`, `size`로 텐서 구조를 확인합니다. `to_a`는 수치를 읽고, `tensor[i, j]`와 `values`는 스칼라 `Value`를 반환합니다.
-- 원소별 `+`, `-`, `*`, `/`는 뒤쪽 축 기준으로 브로드캐스팅합니다. `matmul(other)`는 2차원 이상 입력의 마지막 두 축을 곱하고 앞쪽 축을 브로드캐스팅합니다. `[2, 3, 4] × [4, 5]`의 결과는 `[2, 3, 5]`입니다.
-- `sum`과 `mean`은 전체 텐서를 `Value`로 축소합니다. `transpose`, `softmax(causal: false)`, `normalize_rows(eps: 1e-5)`, `gather_rows(indices)`, `concat_columns(other)`는 행렬에 적용합니다.
-- `Value#backward(seed = 1.0)`는 리프 기울기를 누적합니다. `Tensor#backward(seed)`의 시드는 출력과 형태가 같아야 하며, 출력이 한 원소면 생략할 수 있습니다. `TensorRuby.no_grad { … }`는 새 연산 기록을 끕니다.
-
-```ruby
-require 'tensorruby'
-
-x = TensorRuby.tensor([[1, 2], [3, 4]])
-w = TensorRuby.tensor([[2], [1]])
-loss = x.matmul(w).sum
-loss.backward
-p w.values.map(&:grad) # [4.0, 6.0]
-```
+[텐서와 자동미분](tensor.md) — 입력 형태, 연산 시그니처, 시드, 기울기 누적.
 
 ## 신경망
 
@@ -37,7 +21,7 @@ p w.values.map(&:grad) # [4.0, 6.0]
 
 - `Data::DataLoader.new(dataset, batch_size:, shuffle: true, random: Random.new)`는 인덱스로 접근할 수 있는 데이터셋에서 텐서 쌍을 반환합니다. 마지막에 남은 배치도 포함합니다.
 - `Optim::SGD.new(parameters, lr:)`와 `Optim::Adam.new(parameters, lr: 0.001)`은 `zero_grad`와 `step`을 제공합니다. Adam은 `step(lr:)`도 지원합니다.
-- `Training::Trainer.new(model, optimizer:, loss:, weight: nil, max_grad_norm: nil, forward: nil)`에 `[입력, 정답]` 쌍을 전달합니다. `train_epoch(examples, accumulation_steps: 1, learning_rate: nil)`는 평균 손실을 반환하고, `evaluate(examples)`는 기울기 기록 없이 평가합니다. 학습률 함수는 0부터 시작하는 옵티마이저 단계 번호를 받습니다.
+- [Trainer와 미니배치](trainer.md) — 가중 손실, 마지막 미니배치, 기울기 누적, 평가.
 
 ## 텍스트와 생성
 

@@ -8,23 +8,7 @@
 
 ## テンソルと自動微分
 
-`TensorRuby.tensor(data, shape: nil)`
-
-- 数値やネストした配列からテンソルを作ります。平坦な配列には `shape:` を指定できます。
-- `shape`、`strides`、`rank`、`size` で構造を確認できます。`to_a` は数値を取得し、`tensor[i, j]` と `values` はスカラーの `Value` を返します。
-- 要素ごとの `+`、`-`、`*`、`/` は末尾の軸を基準にブロードキャストします。`matmul(other)` は 2 次元以上の入力の末尾 2 軸で行列積を計算し、先頭の軸をブロードキャストします。`[2, 3, 4] × [4, 5]` の結果は `[2, 3, 5]` です。
-- `sum` と `mean` は全要素を集約して `Value` を返します。`transpose`、`softmax(causal: false)`、`normalize_rows(eps: 1e-5)`、`gather_rows(indices)`、`concat_columns(other)` は行列に適用します。
-- `Value#backward(seed = 1.0)` は葉の勾配を累積します。`Tensor#backward(seed)` は出力と同じ形状の勾配を受け取り、1 要素の場合は省略できます。`TensorRuby.no_grad { … }` は新しい演算の記録を無効にします。
-
-```ruby
-require 'tensorruby'
-
-x = TensorRuby.tensor([[1, 2], [3, 4]])
-w = TensorRuby.tensor([[2], [1]])
-loss = x.matmul(w).sum
-loss.backward
-p w.values.map(&:grad) # [4.0, 6.0]
-```
+[テンソルと自動微分](tensor.md) — 入力形状、演算のシグネチャ、シード、勾配累積。
 
 ## ニューラルネットワーク
 
@@ -37,7 +21,7 @@ p w.values.map(&:grad) # [4.0, 6.0]
 
 - `Data::DataLoader.new(dataset, batch_size:, shuffle: true, random: Random.new)` は添字で参照できるデータセットからテンソルの組を返します。最後の端数バッチも含みます。
 - `Optim::SGD.new(parameters, lr:)` と `Optim::Adam.new(parameters, lr: 0.001)` は `zero_grad` と `step` を提供します。Adam では `step(lr:)` も使えます。
-- `Training::Trainer.new(model, optimizer:, loss:, weight: nil, max_grad_norm: nil, forward: nil)` に `[入力, 正解]` の組を渡します。`train_epoch(examples, accumulation_steps: 1, learning_rate: nil)` は平均損失を返し、`evaluate(examples)` は勾配を記録せず評価します。学習率関数は 0 から始まる更新ステップを受け取ります。
+- [Trainer とミニバッチ](trainer.md) — 重み付き損失、端数バッチ、勾配累積、評価。
 
 ## テキストと生成
 
