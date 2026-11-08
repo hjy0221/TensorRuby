@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'Pure Ruby automatic differentiation and neural networks'
   spec.authors = ['TensorRuby contributors']
   spec.license = 'MIT'
-  spec.files = Dir['lib/**/*.rb', 'README*.md', 'ROADMAP*.md', 'examples/**/*.rb', 'examples/data/*.json'] + ['bin/tensorruby']
+  spec.files = Dir['lib/**/*.rb', 'README*.md', 'ROADMAP*.md', 'docs/**/*.md', 'examples/**/*.rb', 'examples/data/*.json'] + ['bin/tensorruby']
   spec.bindir = 'bin'
   spec.executables = ['tensorruby']
   spec.require_paths = ['lib']
