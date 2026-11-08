@@ -270,18 +270,48 @@ module TensorRuby
       end
     end
 
+    # Multiply the last two axes and broadcast the leading batch axes.
     def matmul(other)
       other = Tensor.wrap(other)
-      raise ArgumentError, 'matmul requires rank-2 tensors' unless rank == 2 && other.rank == 2
-      raise ArgumentError, 'matmul dimension mismatch' unless shape[1] == other.shape[0]
+      raise ArgumentError, 'matmul requires rank-2 or higher tensors' unless rank >= 2 && other.rank >= 2
 
-      rows, inner = shape
-      cols = other.shape[1]
+      rows, inner = shape.last(2)
+      right_inner, columns = other.shape.last(2)
+      raise ArgumentError, 'matmul dimension mismatch' unless inner == right_inner
+
+      batch_shape = Tensor.broadcast_shape(shape[0...-2], other.shape[0...-2])
       left, right = flat_data, other.flat_data
       right_node = other.graph_node
-      output = CPU.matmul(left, right, rows, inner, cols)
-      operation([rows, cols], output, [@node, right_node]) do |gradient, pass|
-        grad_left, grad_right = CPU.matmul_backward(left, right, gradient, rows, inner, cols)
+      if batch_shape.empty?
+        output = CPU.matmul(left, right, rows, inner, columns)
+        return operation([rows, columns], output, [@node, right_node]) do |gradient, pass|
+          grad_left, grad_right = CPU.matmul_backward(left, right, gradient, rows, inner, columns)
+          @node.accumulate_vector(pass, grad_left)
+          right_node.accumulate_vector(pass, grad_right)
+        end
+      end
+
+      left_size = rows * inner
+      right_size = inner * columns
+      output_size = rows * columns
+      left_matrices, right_matrices = {}, {}
+      batches = Array.new(batch_shape.inject(1, :*)) do |index|
+        coordinates = coordinates_for(index, batch_shape) + [0, 0]
+        a, b = broadcast_offset(coordinates), other.broadcast_offset(coordinates)
+        [a, b, left_matrices[a] ||= left.slice(a, left_size), right_matrices[b] ||= right.slice(b, right_size)]
+      end
+      output = batches.flat_map do |_, _, left_matrix, right_matrix|
+        CPU.matmul(left_matrix, right_matrix, rows, inner, columns)
+      end
+      operation(batch_shape + [rows, columns], output, [@node, right_node]) do |gradient, pass|
+        grad_left = Array.new(left.size, 0.0)
+        grad_right = Array.new(right.size, 0.0)
+        batches.each_with_index do |(a, b, left_matrix, right_matrix), index|
+          upstream = gradient.slice(index * output_size, output_size)
+          da, db = CPU.matmul_backward(left_matrix, right_matrix, upstream, rows, inner, columns)
+          da.each_with_index { |value, i| grad_left[a + i] += value }
+          db.each_with_index { |value, i| grad_right[b + i] += value }
+        end
         @node.accumulate_vector(pass, grad_left)
         right_node.accumulate_vector(pass, grad_right)
       end
@@ -310,16 +340,20 @@ module TensorRuby
       end
     end
 
+    def coordinates_for(index, dimensions)
+      dimensions.reverse.map do |dimension|
+        index, coordinate = index.divmod(dimension)
+        coordinate
+      end.reverse
+    end
+
     def elementwise(other, operator)
       other = Tensor.wrap(other)
       result_shape = Tensor.broadcast_shape(shape, other.shape)
       left, right = flat_data, other.flat_data
       right_node = other.graph_node
       offsets = Array.new(result_shape.inject(1, :*)) do |index|
-        coordinates = result_shape.reverse.map do |dimension|
-          index, coordinate = index.divmod(dimension)
-          coordinate
-        end.reverse
+        coordinates = coordinates_for(index, result_shape)
         [broadcast_offset(coordinates), other.broadcast_offset(coordinates)]
       end
       output = offsets.map { |a, b| left[a].public_send(operator, right[b]) }

@@ -63,7 +63,7 @@ p w.values.map(&:grad)  # [4.0, 6.0]
 
 `Value#backward(seed = 1.0)` traverses the computation graph in reverse topological order and sums gradient contributions at shared nodes. Each call clears intermediate gradients and accumulates leaf gradients. Call `optimizer.zero_grad` before each training step, and build a fresh forward graph after updating parameters.
 
-`Tensor` uses contiguous row-major storage with shape and stride metadata. Indexing and `values` expose scalar `Value` objects. Elementwise `+`, `-`, `*`, and `/` broadcast across trailing axes. `matmul` accepts rank-2 matrices. `sum` and `mean` reduce all elements to a `Value`. `Linear` expects input shaped `[batch, features]`, and MSE requires identical prediction and target shapes. The current API supports nonempty dimensions and whole-tensor reductions.
+`Tensor` uses contiguous row-major storage with shape and stride metadata. Indexing and `values` expose scalar `Value` objects. Elementwise `+`, `-`, `*`, and `/` broadcast across trailing axes. `matmul` multiplies the last two axes of rank-2 or higher tensors and broadcasts the leading axes. For example, `[2, 3, 4] × [4, 5]` yields `[2, 3, 5]`. `sum` and `mean` reduce all elements to a `Value`. `Linear` expects input shaped `[..., features]` with rank 2 or higher, and MSE requires identical prediction and target shapes. The current API supports nonempty dimensions and whole-tensor reductions.
 
 ## Train an XOR model
 

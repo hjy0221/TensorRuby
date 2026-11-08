@@ -272,6 +272,28 @@ class TensorRubyTest < Minitest::Test
     assert_equal [7.0, 11.0, 9.0, 13.0], matrix.values.map(&:grad)
   end
 
+  def test_batched_matmul_broadcasts_both_inputs_and_sums_gradients
+    left = Tensor.new([[[[1, 2]]], [[[3, 4]]]])
+    right = Tensor.new([[[[2], [3]], [[5], [7]], [[11], [13]]]])
+    result = left.matmul(right)
+
+    assert_equal [2, 3, 1, 1], result.shape
+    assert_equal [[[[8.0]], [[19.0]], [[37.0]]], [[[18.0]], [[43.0]], [[85.0]]]], result.to_a
+    result.backward([[[[1]], [[2]], [[3]]], [[[4]], [[5]], [[6]]]])
+    assert_equal [45.0, 56.0, 99.0, 125.0], left.values.map(&:grad)
+    assert_equal [13.0, 18.0, 17.0, 24.0, 21.0, 30.0], right.values.map(&:grad)
+  end
+
+  def test_batched_matmul_accepts_rank_two_weights
+    input = Tensor.new([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    weight = Tensor.new([[2], [3]])
+    output = input.matmul(weight)
+    assert_equal [[[8.0], [18.0]], [[28.0], [38.0]]], output.to_a
+    output.sum.backward
+    assert_equal [16.0, 20.0], weight.values.map(&:grad)
+    assert_raises(ArgumentError) { input.matmul(Tensor.new([[[1], [2]]] * 3)) }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
