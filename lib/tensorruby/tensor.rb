@@ -1,5 +1,5 @@
 module TensorRuby
-  # Contiguous row-major tensor with one graph node per tensor operation.
+  # Strided tensor with one graph node per tensor operation.
   class Tensor
     class Node
       attr_reader :parents
@@ -28,12 +28,49 @@ module TensorRuby
     end
     private_constant :Node
 
+    class Storage
+      def initialize(data, values)
+        @data, @values = data, values
+      end
+
+      def read(index)
+        value = @values[index]
+        value ? value.data : @data[index]
+      end
+
+      def write(index, data)
+        value = @values[index]
+        if value
+          value.data = data
+        else
+          @data[index] = data
+        end
+      end
+    end
+
+    class ViewValue < Value
+      def initialize(storage, offset, **options, &backward)
+        @storage, @offset = storage, offset
+        super(storage.read(offset), **options, &backward)
+      end
+
+      def data
+        @storage.read(@offset)
+      end
+
+      def data=(value)
+        @storage.write(@offset, value)
+      end
+    end
+    private_constant :Storage, :ViewValue
+
     attr_reader :shape, :strides
 
     def initialize(data, shape: nil)
       inferred, flat = self.class.flatten_data(data)
       set_layout(shape || inferred, flat.length)
       @values = flat.map { |value| Value.wrap(value) }
+      @storage = Storage.new(nil, @values)
       @node = Node.new(size, @values.dup) do |gradient, _pass|
         @values.each_with_index { |value, index| value.grad += gradient[index] }
       end
@@ -66,7 +103,7 @@ module TensorRuby
         raise IndexError, 'index out of bounds'
       end
 
-      scalar_at(indices.each_with_index.sum { |index, axis| index * strides[axis] })
+      scalar_at(indices.each_with_index.sum { |index, axis| index * @logical_strides[axis] })
     end
     alias [] at
 
@@ -75,7 +112,7 @@ module TensorRuby
       build = lambda do |axis, offset|
         return data[offset] if axis == rank
 
-        Array.new(shape[axis]) { |i| build.call(axis + 1, offset + i * strides[axis]) }
+        Array.new(shape[axis]) { |i| build.call(axis + 1, offset + i * @logical_strides[axis]) }
       end
       build.call(0, 0)
     end
@@ -201,18 +238,57 @@ module TensorRuby
       end
     end
 
+    def contiguous?
+      @contiguous
+    end
+
+    def contiguous
+      return self if contiguous?
+
+      operation(shape, flat_data, [@node]) do |gradient, pass|
+        @node.accumulate_vector(pass, gradient.dup)
+      end
+    end
+
+    def reshape(*dimensions)
+      dimensions = dimensions.first.dup if dimensions.size == 1 && dimensions.first.is_a?(Array)
+      unless dimensions.count(-1) <= 1 && dimensions.all? { |d| d.is_a?(Integer) && (d.positive? || d == -1) }
+        raise ArgumentError, 'expected positive dimensions and at most one inferred dimension'
+      end
+      if (inferred = dimensions.index(-1))
+        known = dimensions.reject { |d| d == -1 }.inject(1, :*)
+        raise ArgumentError, 'cannot infer reshape dimension' unless (size % known).zero?
+
+        dimensions[inferred] = size / known
+      end
+      raise ArgumentError, 'reshape must preserve element count' unless dimensions.inject(1, :*) == size
+
+      contiguous.view(dimensions, nil) do |gradient, pass, source|
+        source.accumulate_vector(pass, gradient.dup)
+      end
+    end
+
+    def permute(*axes)
+      axes = axes.first if axes.size == 1 && axes.first.is_a?(Array)
+      unless axes.size == rank && axes.all? { |axis| axis.is_a?(Integer) } && axes.sort == (0...rank).to_a
+        raise ArgumentError, 'axes must be a permutation of 0...rank'
+      end
+
+      axes = axes.dup.freeze
+      dimensions = axes.map { |axis| shape[axis] }
+      view(dimensions, axes.map { |axis| strides[axis] }) do |gradient, pass, source|
+        gradient.each_with_index do |value, index|
+          coordinates = coordinates_for(index, dimensions)
+          original = coordinates.each_with_index.sum { |coordinate, axis| coordinate * @logical_strides[axes[axis]] }
+          source.accumulate(pass, original, value)
+        end
+      end
+    end
+
     def transpose
       raise ArgumentError, 'transpose requires a rank-2 tensor' unless rank == 2
 
-      rows, columns = shape
-      data = flat_data
-      indices = Array.new(size) do |index|
-        column, row = index.divmod(rows)
-        row * columns + column
-      end
-      operation([columns, rows], indices.map { |index| data[index] }, [@node]) do |gradient, pass|
-        indices.each_with_index { |source, i| @node.accumulate(pass, source, gradient[i]) }
-      end
+      permute(1, 0)
     end
 
     # Normalize each row. Causal mode masks columns beyond the row index.
@@ -322,12 +398,12 @@ module TensorRuby
     def graph_node; @node; end
 
     def flat_data
-      @values.each_with_index.map { |value, i| value ? value.data : @data[i] }
+      Array.new(size) { |index| @storage.read(storage_offset(index)) }
     end
 
     def broadcast_offset(coordinates)
       coordinates.last(rank).each_with_index.sum do |coordinate, axis|
-        shape[axis] == 1 ? 0 : coordinate * strides[axis]
+        shape[axis] == 1 ? 0 : coordinate * @logical_strides[axis]
       end
     end
 
@@ -380,11 +456,13 @@ module TensorRuby
       raise ArgumentError, 'shape does not match data' unless @shape.inject(1, :*) == size
 
       stride = 1
-      @strides = @shape.reverse.map do |dimension|
+      @logical_strides = @shape.reverse.map do |dimension|
         current = stride
         stride *= dimension
         current
       end.reverse.freeze
+      @strides = @logical_strides
+      @contiguous = true
     end
 
     def operation(shape, data, parents, &pullback)
@@ -399,8 +477,12 @@ module TensorRuby
 
     protected def initialize_operation(shape, data, parents, &pullback)
       set_layout(shape, data.length)
-      @data = data.freeze
       @values = Array.new(data.length)
+      @storage = Storage.new(data, @values)
+      initialize_result_graph(parents, &pullback)
+    end
+
+    def initialize_result_graph(parents, &pullback)
       @node = Node.new(size, parents) do |gradient, pass|
         @last_gradient = gradient
         @values.each_with_index { |value, i| value.grad = gradient[i] if value }
@@ -408,11 +490,40 @@ module TensorRuby
       end
     end
 
+    def storage_offset(index)
+      return index unless @view && !contiguous?
+
+      coordinates_for(index, shape).each_with_index.sum { |coordinate, axis| coordinate * strides[axis] }
+    end
+
+    protected def view(dimensions, strides, &pullback)
+      result = Tensor.allocate
+      result.initialize_view(dimensions, strides, size, @storage, @node, &pullback)
+      result
+    end
+
+    protected def initialize_view(dimensions, strides, size, storage, source, &pullback)
+      set_layout(dimensions, size)
+      @strides = strides.freeze if strides
+      @storage = storage
+      @view = true
+      @values = Array.new(size)
+      @contiguous = shape.each_index.all? { |axis| shape[axis] == 1 || @strides[axis] == @logical_strides[axis] }
+      if TensorRuby.grad_enabled?
+        initialize_result_graph([source]) { |gradient, pass| pullback.call(gradient, pass, source) }
+      else
+        initialize_result_graph([])
+      end
+    end
+
     def scalar_at(index)
       @values[index] ||= begin
-        value = Value.new(@data[index], parents: [@node], tensor_bridge: true) do |gradient, pass|
-          @node.accumulate(pass, index, gradient)
-        end
+        bridge = ->(gradient, pass) { @node.accumulate(pass, index, gradient) }
+        value = if @view
+                  ViewValue.new(@storage, storage_offset(index), parents: [@node], tensor_bridge: true, &bridge)
+                else
+                  Value.new(@storage.read(index), parents: [@node], tensor_bridge: true, &bridge)
+                end
         value.grad = @last_gradient[index] if @last_gradient
         value
       end

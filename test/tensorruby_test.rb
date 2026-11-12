@@ -294,6 +294,45 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { input.matmul(Tensor.new([[[1], [2]]] * 3)) }
   end
 
+  def test_views_share_storage_and_keep_logical_order
+    base = Tensor.new([[1, 2, 3], [4, 5, 6]])
+    transposed = base.transpose
+    assert_equal [1, 3], transposed.strides
+    refute transposed.contiguous?
+    assert_equal [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]], transposed.to_a
+    transposed[1, 0].data = 9
+    assert_equal 9, base[0, 1].data
+    reshaped = base.reshape(3, -1)
+    base[0, 0].data = 8
+    assert_equal 8, reshaped[0, 0].data
+    copy = transposed.contiguous
+    assert copy.contiguous?
+    assert_same copy, copy.contiguous
+    copy[1, 0].data = 10
+    assert_equal 9, transposed[1, 0].data
+    assert_raises(ArgumentError) { base.reshape(4, -1) }
+    assert_raises(ArgumentError) { base.permute(0, 0) }
+  end
+
+  def test_transpose_reshape_matmul_backpropagates_in_original_order
+    base = Tensor.new([[1, 2, 3], [4, 5, 6]])
+    reordered = base.transpose.reshape([2, 3])
+    result = reordered.matmul([[1], [10], [100]])
+    assert_equal [[241.0], [635.0]], result.to_a
+    result.backward([[2], [3]])
+    assert_equal [2.0, 200.0, 30.0, 20.0, 3.0, 300.0], base.values.map(&:grad)
+  end
+
+  def test_rank_three_permutation_and_detached_view
+    base = Tensor.new([[[1, 2]], [[3, 4]]])
+    result = base.permute([2, 0, 1])
+    assert_equal [[[1.0], [3.0]], [[2.0], [4.0]]], result.to_a
+    (result + [10]).backward([[[1], [2]], [[3], [4]]])
+    assert_equal [1.0, 3.0, 2.0, 4.0], base.values.map(&:grad)
+    TensorRuby.no_grad { base.permute(2, 0, 1) }.sum.backward
+    assert_equal [1.0, 3.0, 2.0, 4.0], base.values.map(&:grad)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

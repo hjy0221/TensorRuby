@@ -7,7 +7,7 @@
 ## Construction and inspection
 
 - `TensorRuby.tensor(data, shape: nil)` creates a tensor from a numeric scalar or rectangular nested array. With an explicit shape, the number of values must match the product of its dimensions.
-- `shape` lists dimensions, `strides` gives row-major steps in elements, `rank` counts axes, and `size` counts elements.
+- `shape` lists dimensions, `strides` gives storage steps in elements, `rank` counts axes, and `size` counts elements.
 - `to_a` returns nested numeric arrays, or a number for rank zero. `tensor[i, j]` and `values` expose scalar `Value` objects in row-major order.
 
 ## Operations and shapes
@@ -17,8 +17,13 @@
 | `+`, `-`, `*`, `/` | Elementwise operations align shapes from the right and expand axes of size one. |
 | `matmul(other)` | `[..., M, K]` and `[..., K, N]` produce `[..., M, N]`. The leading shapes must broadcast. Both inputs need rank 2 or higher. |
 | `sum`, `mean` | Both return a scalar `Value` computed across all elements. |
-| `transpose` | `transpose` takes rank 2 and returns a new tensor shaped `[N, M]`. |
+| `transpose` | Returns a rank-2 view with its two axes swapped. |
+| `permute(*axes)` | Returns a view with axes in the specified order. Provide each zero-based axis exactly once. |
+| `reshape(*dimensions)` | Preserves element count and logical order. One dimension may be `-1` for inference. Shares storage for contiguous inputs and copies noncontiguous inputs. |
+| `contiguous?, contiguous` | Returns the original tensor if contiguous. Otherwise returns a row-major copy that supports backpropagation. |
 | `softmax(causal: false)`, `normalize_rows(eps: 1e-5)` | Both take rank 2 and return the same shape. Causal softmax sets entries above the row index to zero. |
+
+Views share element data with their source. Writing through `view[i, j].data` changes the source at the corresponding position. View gradients follow the view’s logical order.
 
 ## Backpropagation
 
