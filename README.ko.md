@@ -1,6 +1,6 @@
 # TensorRuby
 
-[English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+[日本語](README.ja.md) · [English](README.md) · [한국어](README.ko.md)
 
 TensorRuby는 CPU 텐서, 자동미분, 소형 모델 학습을 위한 Pure Ruby 딥러닝 프레임워크입니다. Ruby 2.6 이상이 필요합니다.
 

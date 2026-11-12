@@ -1,6 +1,6 @@
 # TensorRuby
 
-[English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+[日本語](README.ja.md) · [English](README.md) · [한국어](README.ko.md)
 
 TensorRuby は CPU テンソル、自動微分、小規模モデルの学習を扱う Pure Ruby の深層学習フレームワークです。Ruby 2.6 以上が必要です。
 

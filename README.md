@@ -1,6 +1,6 @@
 # TensorRuby
 
-[English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+[日本語](README.ja.md) · [English](README.md) · [한국어](README.ko.md)
 
 TensorRuby is a Pure Ruby deep learning framework for CPU tensors, automatic differentiation, and small model training. Requires Ruby 2.6 or later.
 
