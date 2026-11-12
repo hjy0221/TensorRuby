@@ -34,6 +34,22 @@ model.eval
 p TensorRuby.no_grad { model.call([[3]]).to_a } # approximately [[7.0]]
 ```
 
+## `p`와 `puts`의 배열 출력 차이
+
+`p`는 배열 구조를 한 줄에 보여줍니다. `puts`는 배열 원소를 하나씩 별도 줄에 출력합니다.
+
+```ruby
+p [2, 1, 1]
+puts [2, 1, 1]
+```
+
+```text
+[2, 1, 1]
+2
+1
+1
+```
+
 ## 다음 단계
 
 `tensorruby examples`로 전체 예제를 확인하세요. 명령을 찾을 수 없다면 `gem environment`에서 gem 실행 파일 폴더를 확인해 PATH에 추가하세요.

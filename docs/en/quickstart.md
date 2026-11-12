@@ -34,6 +34,22 @@ model.eval
 p TensorRuby.no_grad { model.call([[3]]).to_a } # approximately [[7.0]]
 ```
 
+## Printing arrays with `p` and `puts`
+
+`p` displays the array structure on one line. `puts` prints each array element on its own line.
+
+```ruby
+p [2, 1, 1]
+puts [2, 1, 1]
+```
+
+```text
+[2, 1, 1]
+2
+1
+1
+```
+
 ## Next steps
 
 Use `tensorruby examples` to list the available examples. If the shell cannot find the command, add the gem executable directory to your PATH. Run `gem environment` to locate it.

@@ -34,6 +34,22 @@ model.eval
 p TensorRuby.no_grad { model.call([[3]]).to_a } # approximately [[7.0]]
 ```
 
+## `p` と `puts` で配列を表示する
+
+`p` は配列の構造を 1 行で表示します。`puts` は配列の各要素を別々の行に出力します。
+
+```ruby
+p [2, 1, 1]
+puts [2, 1, 1]
+```
+
+```text
+[2, 1, 1]
+2
+1
+1
+```
+
 ## 次のステップ
 
 `tensorruby examples` で全サンプルを確認できます。コマンドが見つからない場合は `gem environment` で gem の実行ファイルのディレクトリを確認し、PATH に追加します。
