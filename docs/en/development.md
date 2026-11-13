@@ -32,3 +32,5 @@ end
 ```sh
 ruby -Ilib benchmark/backends.rb
 ```
+
+`Backend.profile { … }` returns rows grouped by backend, phase, and `[rows, inner, columns]`. Each row includes call count, measured kernel seconds, and estimated FLOPs. Batched calls count each matrix product separately.

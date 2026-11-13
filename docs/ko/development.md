@@ -32,3 +32,5 @@ end
 ```sh
 ruby -Ilib benchmark/backends.rb
 ```
+
+`Backend.profile { … }`은 백엔드, 순전파·역전파, `[rows, inner, columns]`별로 호출 횟수, 실측 커널 시간(초), 추정 FLOP 수를 반환합니다. 배치 행렬곱은 행렬별로 호출을 집계합니다.

@@ -32,3 +32,5 @@ end
 ```sh
 ruby -Ilib benchmark/backends.rb
 ```
+
+`Backend.profile { … }` はバックエンド、順伝播・逆伝播、`[rows, inner, columns]` ごとの呼び出し回数、実測カーネル時間（秒）、推定 FLOP 数を返します。バッチ行列積は行列ごとに集計します。

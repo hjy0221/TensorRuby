@@ -402,6 +402,18 @@ class TensorRubyTest < Minitest::Test
     assert_same original, Backend.current
   end
 
+  def test_matmul_profile_groups_batched_calls_and_restores_scope
+    x = Tensor.new([[[1, 2]], [[3, 4]]])
+    report = Backend.profile do
+      assert_raises(RuntimeError) { Backend.profile { raise 'stop' } }
+      x.matmul([[2], [3]]).sum.backward
+    end
+    assert_equal [[:forward, 2, 8], [:backward, 2, 16]],
+                 report.map { |row| row.values_at(:phase, :calls, :estimated_flops) }
+    assert report.all? { |row| row[:shape] == [1, 2, 1] && row[:seconds] >= 0 }
+    assert_empty Backend.profile {}
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

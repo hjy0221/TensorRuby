@@ -380,9 +380,13 @@ module TensorRuby
       right_node = other.graph_node
       backend = Backend.current
       if batch_shape.empty?
-        output = backend.matmul(left, right, rows, inner, columns)
+        output = Backend.measure(backend, :forward, rows, inner, columns) do
+          backend.matmul(left, right, rows, inner, columns)
+        end
         return operation([rows, columns], output, [@node, right_node]) do |gradient, pass|
-          grad_left, grad_right = backend.matmul_backward(left, right, gradient, rows, inner, columns)
+          grad_left, grad_right = Backend.measure(backend, :backward, rows, inner, columns) do
+            backend.matmul_backward(left, right, gradient, rows, inner, columns)
+          end
           @node.accumulate_vector(pass, grad_left)
           right_node.accumulate_vector(pass, grad_right)
         end
@@ -398,14 +402,18 @@ module TensorRuby
         [a, b, left_matrices[a] ||= left.slice(a, left_size), right_matrices[b] ||= right.slice(b, right_size)]
       end
       output = batches.flat_map do |_, _, left_matrix, right_matrix|
-        backend.matmul(left_matrix, right_matrix, rows, inner, columns)
+        Backend.measure(backend, :forward, rows, inner, columns) do
+          backend.matmul(left_matrix, right_matrix, rows, inner, columns)
+        end
       end
       operation(batch_shape + [rows, columns], output, [@node, right_node]) do |gradient, pass|
         grad_left = Array.new(left.size, 0.0)
         grad_right = Array.new(right.size, 0.0)
         batches.each_with_index do |(a, b, left_matrix, right_matrix), index|
           upstream = gradient.slice(index * output_size, output_size)
-          da, db = backend.matmul_backward(left_matrix, right_matrix, upstream, rows, inner, columns)
+          da, db = Backend.measure(backend, :backward, rows, inner, columns) do
+            backend.matmul_backward(left_matrix, right_matrix, upstream, rows, inner, columns)
+          end
           da.each_with_index { |value, i| grad_left[a + i] += value }
           db.each_with_index { |value, i| grad_right[b + i] += value }
         end

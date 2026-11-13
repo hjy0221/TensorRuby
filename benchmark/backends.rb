@@ -27,3 +27,18 @@ workloads.each do |label, (parameters, forward)|
     end
   end
 end
+
+[TensorRuby::CPU, TensorRuby::Backend::PackedCPU].each do |backend|
+  block.zero_grad
+  start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  report = TensorRuby::Backend.profile do
+    TensorRuby::Backend.with(backend) { block.call(input).sum.backward }
+  end
+  elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+  puts format('%s | Transformer profile: %.3f ms total', backend, elapsed * 1000)
+  report.each do |entry|
+    puts format('  %s %s | %d calls | %.3f ms | %d estimated FLOPs',
+                entry[:phase], entry[:shape].join('×'), entry[:calls],
+                entry[:seconds] * 1000, entry[:estimated_flops])
+  end
+end
