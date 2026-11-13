@@ -34,3 +34,5 @@ ruby -Ilib benchmark/backends.rb
 ```
 
 `Backend.profile { … }` はバックエンド、順伝播・逆伝播、`[rows, inner, columns]` ごとの呼び出し回数、実測カーネル時間（秒）、推定 FLOP 数を返します。バッチ行列積は行列ごとに集計します。
+
+macOS では `Backend::Accelerate.available?` で利用可否を確認し、`Backend.with(Backend::Accelerate)` で倍精度の行列積を選択できます。

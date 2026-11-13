@@ -34,3 +34,5 @@ ruby -Ilib benchmark/backends.rb
 ```
 
 `Backend.profile { … }` returns rows grouped by backend, phase, and `[rows, inner, columns]`. Each row includes call count, measured kernel seconds, and estimated FLOPs. Batched calls count each matrix product separately.
+
+On macOS, check `Backend::Accelerate.available?` and select double-precision matrix multiplication with `Backend.with(Backend::Accelerate)`.

@@ -414,6 +414,24 @@ class TensorRubyTest < Minitest::Test
     assert_empty Backend.profile {}
   end
 
+  def test_accelerate_matches_cpu_for_rectangular_batched_matmul
+    backend = Backend::Accelerate
+    skip 'macOS Accelerate unavailable' unless backend.available?
+
+    left = Tensor.new([[[1, 2, 3], [4, 5, 6]], [[-2, 1, 4], [0, 3, 2]]])
+    right = Tensor.new([[2, 3, 5, 7], [1, 4, 2, 6], [8, 3, 1, 9]])
+    parameters = left.values + right.values
+    expected = left.matmul(right)
+    expected.sum.backward
+    gradients = parameters.map(&:grad)
+    parameters.each(&:zero_grad)
+
+    actual = Backend.with(backend) { left.matmul(right) }
+    assert_equal expected.to_a, actual.to_a
+    actual.sum.backward
+    assert_equal gradients, parameters.map(&:grad)
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

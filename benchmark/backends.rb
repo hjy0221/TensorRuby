@@ -7,12 +7,15 @@ left, right = matrix.call(48, 48), matrix.call(48, 48)
 input = matrix.call(12, 16)
 block = TensorRuby::NN::TransformerBlock.new(16, heads: 4, hidden_features: 32, random: random)
 
+backends = [TensorRuby::CPU, TensorRuby::Backend::PackedCPU]
+backends << TensorRuby::Backend::Accelerate if TensorRuby::Backend::Accelerate.available?
+
 workloads = {
   'matmul 48×48' => [left.values + right.values, -> { left.matmul(right) }],
   'Transformer 12×16' => [block.parameters + input.values, -> { block.call(input) }]
 }
 workloads.each do |label, (parameters, forward)|
-  [TensorRuby::CPU, TensorRuby::Backend::PackedCPU].each do |backend|
+  backends.each do |backend|
     TensorRuby::Backend.with(backend) do
       run = -> { parameters.each(&:zero_grad); forward.call.sum.backward }
       2.times { run.call }
@@ -28,7 +31,7 @@ workloads.each do |label, (parameters, forward)|
   end
 end
 
-[TensorRuby::CPU, TensorRuby::Backend::PackedCPU].each do |backend|
+backends.each do |backend|
   block.zero_grad
   start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   report = TensorRuby::Backend.profile do
