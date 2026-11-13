@@ -143,6 +143,26 @@ module TensorRuby
       end
     end
 
+    # Computes (self * scale + bias).relu with one tensor operation.
+    def affine_relu(scale:, bias:)
+      unless [scale, bias].all? { |value| value.is_a?(Numeric) && value.real? && value.to_f.finite? }
+        raise ArgumentError, 'scale and bias must be finite real scalars'
+      end
+
+      scale, bias = scale.to_f, bias.to_f
+      output = flat_data.map do |value|
+        transformed = value * scale + bias
+        transformed > 0 ? transformed : 0.0
+      end
+      active = output.map(&:positive?) if TensorRuby.grad_enabled?
+      operation(shape, output, [@node]) do |gradient, pass|
+        input_gradient = active.each_with_index.map do |positive, index|
+          positive ? gradient[index] * scale : 0.0
+        end
+        @node.accumulate_vector(pass, input_gradient)
+      end
+    end
+
     def sum(axis: nil, keepdim: false)
       reduce_sum(axis, keepdim, average: false)
     end

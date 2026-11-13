@@ -15,6 +15,7 @@
 | API | Input and return value |
 | --- | --- |
 | `+`, `-`, `*`, `/` | Elementwise operations align shapes from the right and expand axes of size one. |
+| `affine_relu(scale:, bias:)` | Computes `(tensor * scale + bias).relu` in one eager operation. Scale and bias must be finite real scalars. |
 | `matmul(other)` | `[..., M, K]` and `[..., K, N]` produce `[..., M, N]`. The leading shapes must broadcast. Both inputs need rank 2 or higher. |
 | `sum(axis: nil, keepdim: false)`, `mean(axis: nil, keepdim: false)` | Accepts one axis or a list of axes, including negative indices. Returns a Tensor. `keepdim: true` retains reduced axes with size 1. With no arguments, returns a scalar `Value`. |
 | `transpose` | Returns a rank-2 view with its two axes swapped. |

@@ -353,6 +353,23 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { x.sum(axis: 3) }
   end
 
+  def test_affine_relu_matches_separate_operations_on_a_view
+    input = Tensor.new([[1, -1, 0], [2, 3, -2]])
+    view = input.transpose
+    separate = (view * -2 + 2).relu
+    fused = view.affine_relu(scale: -2, bias: 2)
+    assert_equal separate.to_a, fused.to_a
+
+    seed = [[1, 2], [3, 4], [5, 6]]
+    separate.backward(seed)
+    expected = input.values.map(&:grad)
+    input.values.each(&:zero_grad)
+    fused.backward(seed)
+    assert_equal expected, input.values.map(&:grad)
+    assert_equal [-0.0, -6.0, -10.0, 0.0, 0.0, -12.0], expected
+    assert_raises(ArgumentError) { view.affine_relu(scale: Float::INFINITY, bias: 0) }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
