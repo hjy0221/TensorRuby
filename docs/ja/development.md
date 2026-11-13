@@ -16,3 +16,19 @@ SIZE=48 ITERATIONS=20 ruby -Ilib benchmark/matmul.rb
 ベンチマークは順伝播のみと順伝播・逆伝播を合わせた時間とオブジェクト割り当て数を表示します。同じマシン、Ruby バージョン、行列サイズで比較してください。現在のランタイムは Ruby の CPU カーネルを使用します。
 
 [開発ロードマップ](../../ROADMAP.ja.md)
+
+## 行列積バックエンド
+
+ブロック内の行列積に指定したバックエンドを使います。逆伝播には順伝播で選択したバックエンドを使います。独自バックエンドは `TensorRuby::CPU` と同じ平坦な配列の API を実装します。
+
+```ruby
+require "tensorruby"
+
+TensorRuby::Backend.with(TensorRuby::Backend::PackedCPU) do
+  TensorRuby.tensor([[1, 2]]).matmul([[3], [4]]).to_a # [[11.0]]
+end
+```
+
+```sh
+ruby -Ilib benchmark/backends.rb
+```

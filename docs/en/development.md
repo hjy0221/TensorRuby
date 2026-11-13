@@ -16,3 +16,19 @@ SIZE=48 ITERATIONS=20 ruby -Ilib benchmark/matmul.rb
 The benchmark reports inference and forward-plus-backward time and allocation counts. Compare revisions on the same machine, Ruby version, and matrix size. The runtime currently uses Ruby CPU kernels.
 
 [Roadmap](../../ROADMAP.md)
+
+## Matrix multiplication backends
+
+The block switches the backend for matrix multiplication only. Backpropagation uses the backend selected during the forward pass. Custom backends implement the same flat-array methods as `TensorRuby::CPU`.
+
+```ruby
+require "tensorruby"
+
+TensorRuby::Backend.with(TensorRuby::Backend::PackedCPU) do
+  TensorRuby.tensor([[1, 2]]).matmul([[3], [4]]).to_a # [[11.0]]
+end
+```
+
+```sh
+ruby -Ilib benchmark/backends.rb
+```

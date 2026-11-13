@@ -378,10 +378,11 @@ module TensorRuby
       batch_shape = Tensor.broadcast_shape(shape[0...-2], other.shape[0...-2])
       left, right = flat_data, other.flat_data
       right_node = other.graph_node
+      backend = Backend.current
       if batch_shape.empty?
-        output = CPU.matmul(left, right, rows, inner, columns)
+        output = backend.matmul(left, right, rows, inner, columns)
         return operation([rows, columns], output, [@node, right_node]) do |gradient, pass|
-          grad_left, grad_right = CPU.matmul_backward(left, right, gradient, rows, inner, columns)
+          grad_left, grad_right = backend.matmul_backward(left, right, gradient, rows, inner, columns)
           @node.accumulate_vector(pass, grad_left)
           right_node.accumulate_vector(pass, grad_right)
         end
@@ -397,14 +398,14 @@ module TensorRuby
         [a, b, left_matrices[a] ||= left.slice(a, left_size), right_matrices[b] ||= right.slice(b, right_size)]
       end
       output = batches.flat_map do |_, _, left_matrix, right_matrix|
-        CPU.matmul(left_matrix, right_matrix, rows, inner, columns)
+        backend.matmul(left_matrix, right_matrix, rows, inner, columns)
       end
       operation(batch_shape + [rows, columns], output, [@node, right_node]) do |gradient, pass|
         grad_left = Array.new(left.size, 0.0)
         grad_right = Array.new(right.size, 0.0)
         batches.each_with_index do |(a, b, left_matrix, right_matrix), index|
           upstream = gradient.slice(index * output_size, output_size)
-          da, db = CPU.matmul_backward(left_matrix, right_matrix, upstream, rows, inner, columns)
+          da, db = backend.matmul_backward(left_matrix, right_matrix, upstream, rows, inner, columns)
           da.each_with_index { |value, i| grad_left[a + i] += value }
           db.each_with_index { |value, i| grad_right[b + i] += value }
         end

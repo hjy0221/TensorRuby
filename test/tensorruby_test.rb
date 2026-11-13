@@ -370,6 +370,38 @@ class TensorRubyTest < Minitest::Test
     assert_raises(ArgumentError) { view.affine_relu(scale: Float::INFINITY, bias: 0) }
   end
 
+  def test_scoped_matmul_backend_captures_backward_and_matches_transformer
+    original = Backend.current
+    calls = []
+    packed = Backend::PackedCPU
+    instrumented = Object.new
+    [:matmul, :matmul_backward].each do |method|
+      instrumented.define_singleton_method(method) do |*args|
+        calls << method
+        packed.public_send(method, *args)
+      end
+    end
+    model = NN::TransformerBlock.new(4, heads: 2, hidden_features: 8, random: Random.new(12))
+    input = Tensor.new([[1, 2, 3, 4], [4, 1, 3, 2]])
+    expected = model.call(input)
+    expected.sum.backward
+    parameters = model.parameters + input.values
+    gradients = parameters.map(&:grad)
+    parameters.each(&:zero_grad)
+
+    result = Backend.with(instrumented) { model.call(input) }
+    assert_same original, Backend.current
+    assert_equal expected.to_a, result.to_a
+    result.sum.backward
+    assert_includes calls, :matmul_backward
+    parameters.zip(gradients).each { |value, gradient| assert_in_delta gradient, value.grad, 1e-10 }
+    Backend.with(packed) do
+      assert_raises(RuntimeError) { Backend.with(original) { raise 'failure' } }
+      assert_same packed, Backend.current
+    end
+    assert_same original, Backend.current
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])

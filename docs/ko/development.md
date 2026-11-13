@@ -16,3 +16,19 @@ SIZE=48 ITERATIONS=20 ruby -Ilib benchmark/matmul.rb
 벤치마크는 순전파와 순전파·역전파의 시간 및 객체 할당 수를 표시합니다. 같은 컴퓨터, Ruby 버전, 행렬 크기로 비교하세요. 현재 런타임은 Ruby CPU 커널을 사용합니다.
 
 [개발 로드맵](../../ROADMAP.ko.md)
+
+## 행렬곱 백엔드
+
+블록 안의 행렬곱에 지정한 백엔드를 사용합니다. 역전파는 순전파에서 선택한 백엔드를 사용합니다. 자체 백엔드는 `TensorRuby::CPU`와 같은 평탄 배열 API를 구현합니다.
+
+```ruby
+require "tensorruby"
+
+TensorRuby::Backend.with(TensorRuby::Backend::PackedCPU) do
+  TensorRuby.tensor([[1, 2]]).matmul([[3], [4]]).to_a # [[11.0]]
+end
+```
+
+```sh
+ruby -Ilib benchmark/backends.rb
+```
