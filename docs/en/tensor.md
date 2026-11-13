@@ -16,7 +16,7 @@
 | --- | --- |
 | `+`, `-`, `*`, `/` | Elementwise operations align shapes from the right and expand axes of size one. |
 | `matmul(other)` | `[..., M, K]` and `[..., K, N]` produce `[..., M, N]`. The leading shapes must broadcast. Both inputs need rank 2 or higher. |
-| `sum`, `mean` | Both return a scalar `Value` computed across all elements. |
+| `sum(axis: nil, keepdim: false)`, `mean(axis: nil, keepdim: false)` | Accepts one axis or a list of axes, including negative indices. Returns a Tensor. `keepdim: true` retains reduced axes with size 1. With no arguments, returns a scalar `Value`. |
 | `transpose` | Returns a rank-2 view with its two axes swapped. |
 | `permute(*axes)` | Returns a view with axes in the specified order. Provide each zero-based axis exactly once. |
 | `reshape(*dimensions)` | Preserves element count and logical order. One dimension may be `-1` for inference. Shares storage for contiguous inputs and copies noncontiguous inputs. |

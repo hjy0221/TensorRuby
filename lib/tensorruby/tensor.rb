@@ -143,12 +143,12 @@ module TensorRuby
       end
     end
 
-    def sum
-      reduce_with_gradient(flat_data.sum, Array.new(size, 1.0))
+    def sum(axis: nil, keepdim: false)
+      reduce_sum(axis, keepdim, average: false)
     end
 
-    def mean
-      reduce_with_gradient(flat_data.sum / size, Array.new(size, 1.0 / size))
+    def mean(axis: nil, keepdim: false)
+      reduce_sum(axis, keepdim, average: true)
     end
 
     # Attach a scalar reduction with a row-major derivative per input element.
@@ -408,6 +408,37 @@ module TensorRuby
     end
 
     private
+
+    def reduce_sum(axis, keepdim, average:)
+      data = flat_data
+      if axis.nil? && !keepdim
+        divisor = average ? size : 1
+        return reduce_with_gradient(data.sum.fdiv(divisor), Array.new(size, 1.0 / divisor))
+      end
+
+      axes = axis.nil? ? (0...rank).to_a : (axis.is_a?(Array) ? axis : [axis])
+      if (!axis.nil? && axes.empty?) ||
+         !axes.all? { |index| index.is_a?(Integer) && index >= -rank && index < rank }
+        raise ArgumentError, 'expected valid reduction axes'
+      end
+      axes = axes.map { |index| index.negative? ? index + rank : index }
+      raise ArgumentError, 'duplicate reduction axes' unless axes.uniq == axes
+
+      kept = (0...rank).to_a - axes
+      dimensions = keepdim ? shape.each_index.map { |i| axes.include?(i) ? 1 : shape[i] } : shape.values_at(*kept)
+      output = Array.new(dimensions.inject(1, :*), 0.0)
+      divisor = average ? shape.values_at(*axes).inject(1, :*) : 1
+      offsets = data.each_index.map do |index|
+        coordinates = coordinates_for(index, shape)
+        offset = kept.reduce(0) { |flat, i| flat * shape[i] + coordinates[i] }
+        output[offset] += data[index]
+        offset
+      end
+      output.map! { |value| value.fdiv(divisor) } if average
+      operation(dimensions, output, [@node]) do |gradient, pass|
+        @node.accumulate_vector(pass, offsets.map { |offset| gradient[offset].fdiv(divisor) })
+      end
+    end
 
     def scalar_bridge(value, gradient)
       weights = gradient.dup.freeze

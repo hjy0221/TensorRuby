@@ -333,6 +333,26 @@ class TensorRubyTest < Minitest::Test
     assert_equal [1.0, 3.0, 2.0, 4.0], base.values.map(&:grad)
   end
 
+  def test_axis_mean_on_transposed_view_with_broadcast_backward
+    source = Tensor.new([[1, 2, 3], [5, 8, 11]])
+    view = source.transpose
+    centered = view - view.mean(axis: -1, keepdim: true)
+    assert_equal [[-2.0, 2.0], [-3.0, 3.0], [-4.0, 4.0]], centered.to_a
+    centered.backward([[1, 3], [2, 6], [3, 9]])
+    assert_equal [-1.0, -2.0, -3.0, 1.0, 2.0, 3.0], source.values.map(&:grad)
+  end
+
+  def test_axis_sum_preserves_shapes_and_accumulates_gradients
+    x = Tensor.new([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    assert_equal [14.0, 22.0], x.sum(axis: [0, -1]).to_a
+    assert_equal [1, 1, 1], x.sum(keepdim: true).shape
+    assert_equal [], x.sum(axis: [0, 1, 2]).shape
+    x.sum(axis: [0, -1]).backward([2, 3])
+    assert_equal [2.0, 2.0, 3.0, 3.0] * 2, x.values.map(&:grad)
+    assert_raises(ArgumentError) { x.mean(axis: [1, -2]) }
+    assert_raises(ArgumentError) { x.sum(axis: 3) }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
