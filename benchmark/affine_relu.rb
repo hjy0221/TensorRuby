@@ -3,6 +3,7 @@ require 'tensorruby'
 input = TensorRuby.tensor(Array.new(4096) { |i| i.fdiv(4096) - 0.5 })
 paths = {
   separate: -> { (input * 2 + 0.25).relu },
+  expression: -> { input.fuse { |x| (x * 2 + 0.25).relu } },
   fused: -> { input.affine_relu(scale: 2, bias: 0.25) }
 }
 

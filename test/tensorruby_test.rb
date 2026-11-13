@@ -448,6 +448,23 @@ class TensorRubyTest < Minitest::Test
     end
   end
 
+  def test_fused_expression_matches_eager_chain_on_transposed_view
+    input = Tensor.new([[1, -1, 2], [0, 3, -2]])
+    view = input.transpose
+    eager = ((view * -2 + 2).relu * 3 - 1).relu
+    fused = view.fuse { |x| ((x * -2 + 2).relu * 3 - 1).relu }
+    assert_equal eager.to_a, fused.to_a
+
+    seed = [[1, 2], [3, 4], [5, 6]]
+    eager.backward(seed)
+    expected = input.values.map(&:grad)
+    input.values.each(&:zero_grad)
+    fused.backward(seed)
+    assert_equal expected, input.values.map(&:grad)
+    assert_equal eager.to_a, TensorRuby.no_grad { view.fuse { |x| ((x * -2 + 2).relu * 3 - 1).relu } }.to_a
+    assert_raises(ArgumentError) { view.fuse { |x| x + view } }
+  end
+
   def test_regression
     m = NN::Linear.new(1,1,random: Random.new(42)); opt = Optim::SGD.new(m.parameters,lr: 0.05)
     x = Tensor.new([[-2],[-1],[0],[1],[2]]); y = Tensor.new([[-3],[-1],[1],[3],[5]])
