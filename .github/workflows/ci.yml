@@ -9,11 +9,15 @@ permissions:
 
 jobs:
   test-and-package:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-22.04]
         ruby: ['2.6', '3.1', '3.4']
+        include:
+          - os: macos-15
+            ruby: '3.4'
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -22,6 +26,9 @@ jobs:
       - name: Run tests
         run: |
           gem install minitest -v 5.22.3 --no-document
+          if [ "$RUNNER_OS" = macOS ]; then
+            ruby -Ilib -rtensorruby -e 'abort "Accelerate unavailable" unless TensorRuby::Backend::Accelerate.available?'
+          fi
           ruby -Ilib test/tensorruby_test.rb
       - name: Verify released package layout
         run: |

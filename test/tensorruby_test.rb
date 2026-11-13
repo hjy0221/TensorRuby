@@ -414,22 +414,38 @@ class TensorRubyTest < Minitest::Test
     assert_empty Backend.profile {}
   end
 
-  def test_accelerate_matches_cpu_for_rectangular_batched_matmul
-    backend = Backend::Accelerate
-    skip 'macOS Accelerate unavailable' unless backend.available?
+  def test_matmul_backend_conformance
+    backends = [CPU, Backend::PackedCPU]
+    backends << Backend::Accelerate if Backend::Accelerate.available?
+    cases = [
+      [Tensor.new([[1, 2, 3], [4, 5, 6]]), Tensor.new([[2, 3], [1, 4], [8, 3]]), false],
+      [Tensor.new([[[[1, 2]]], [[[3, 4]]]]), Tensor.new([[[[2], [3]], [[5], [7]]]]), false],
+      [Tensor.new([[1, 2], [3, 4], [5, 6]]), Tensor.new([[2, 3, 5], [1, 4, 2]]), true]
+    ]
 
-    left = Tensor.new([[[1, 2, 3], [4, 5, 6]], [[-2, 1, 4], [0, 3, 2]]])
-    right = Tensor.new([[2, 3, 5, 7], [1, 4, 2, 6], [8, 3, 1, 9]])
-    parameters = left.values + right.values
-    expected = left.matmul(right)
-    expected.sum.backward
-    gradients = parameters.map(&:grad)
-    parameters.each(&:zero_grad)
+    cases.each do |left, right, transpose|
+      parameters = left.values + right.values
+      run = lambda do |backend|
+        parameters.each(&:zero_grad)
+        Backend.with(backend) do
+          a, b = transpose ? [left.transpose, right.transpose] : [left, right]
+          output = a.matmul(b)
+          seed = Tensor.new(Array.new(output.size) { |i| (i + 1).fdiv(3) }, shape: output.shape)
+          output.backward(seed)
+          [output.shape, output.to_a.flatten + parameters.map(&:grad)]
+        end
+      end
 
-    actual = Backend.with(backend) { left.matmul(right) }
-    assert_equal expected.to_a, actual.to_a
-    actual.sum.backward
-    assert_equal gradients, parameters.map(&:grad)
+      expected_shape, expected_values = run.call(CPU)
+      backends.each do |backend|
+        shape, values = run.call(backend)
+        assert_equal expected_shape, shape
+        assert_equal expected_values.size, values.size
+        expected_values.zip(values).each do |expected, actual|
+          assert_in_delta expected, actual, 1e-10, backend.to_s
+        end
+      end
+    end
   end
 
   def test_regression

@@ -1,6 +1,11 @@
 require 'tensorruby'
 
-iterations = 10
+iterations = Integer(ENV.fetch('ITERATIONS', '10'))
+abort 'ITERATIONS must be positive' unless iterations.positive?
+
+puts "TensorRuby #{TensorRuby::VERSION} | #{RUBY_DESCRIPTION} | #{RUBY_PLATFORM}"
+puts "OS: #{`uname -sr`.strip} | dtype: Float (binary64) | seed: 42 | iterations: #{iterations}"
+puts 'Scope: forward + backward, including tensor graph and gradient reset'
 random = Random.new(42)
 matrix = ->(rows, columns) { TensorRuby.tensor(Array.new(rows) { Array.new(columns) { random.rand - 0.5 } }) }
 left, right = matrix.call(48, 48), matrix.call(48, 48)
